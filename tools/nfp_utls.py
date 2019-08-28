@@ -21,13 +21,10 @@ def is_rectangle(poly, tolerance=None):
     bb = get_polygon_bounds(poly)
     tolerance = tolerance or TOL
     for point in poly:
-        if not almost_equal(point['x'], bb['x'], tolerance) and not almost_equal(
-                point['x'], bb['x'] + bb['length'], tolerance):
+        if not almost_equal(point['x'], bb['x'], tolerance) and not almost_equal(point['x'], bb['x'] + bb['length'], tolerance):
             return False
-        if not almost_equal(point['y'], bb['y'], tolerance) and not almost_equal(
-                point['y'], bb['y'] + bb['width'], tolerance):
+        if not almost_equal(point['y'], bb['y'], tolerance) and not almost_equal(point['y'], bb['y'] + bb['width'], tolerance):
             return False
-
     return True
 
 
@@ -921,8 +918,13 @@ def polygon_area(polygon):
 
 
 def rotate_polygon(polygon, angle):
+    """
+    将输入的多边形旋转相应的角度，返回的rotated是一个字典
+    包括左下角的点(x, y)，以及长度和宽度(length, width)，以及旋转后的点的坐标
+    注意！！！！
+    由于本次比赛的特殊性，每个零件的角度都是0到180度，所以，这里的计算可以简化，不需要调用三角函数
+    """
 
-    # 这里的rotated用来存在旋转之后的点的坐标
     rotated = {'points': list()}
     angle = angle * math.pi / 180
 
@@ -948,9 +950,9 @@ def rotate_polygon(polygon, angle):
 
 def get_polygon_bounds(polygon):
     """
-    输入的是矩形的四个点的坐标，输入的是一个list,list的每个元素都是一个dict, key-value 分别是x, y
+    返回左下角的点(x, y)，以及长度和宽度(length, width)
+    
     """
-    # 这里判断一下，不能为空，并且至少是4个点
     if polygon is None or len(polygon) < 3:
         return None
 
@@ -958,7 +960,6 @@ def get_polygon_bounds(polygon):
     xmin = polygon[0]['x']
     ymax = polygon[0]['y']
     ymin = polygon[0]['y']
-    # print("get_polygon_bounds", (xmax, xmin, ymax, ymin))
 
     for point in polygon:
         if point['x'] > xmax:
@@ -969,9 +970,7 @@ def get_polygon_bounds(polygon):
             ymax = point['y']
         elif point['y'] < ymin:
             ymin = point['y']
-    
-    # print("get_polygon_bounds", (xmax, xmin, ymax, ymin))
-    
+        
     return {
         'x': xmin,
         'y': ymin,

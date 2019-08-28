@@ -1,53 +1,46 @@
 # -*- coding: utf-8 -*-
 import json
-# import nfp_utls
 from tools.nfp_utls import almost_equal, rotate_polygon, get_polygon_bounds, polygon_area
 import copy
 import pyclipper
 
 
 class PlacementWorker():
-    def __init__(self, bin_polygon, paths, ids, rotations, config, nfp_cache):
-        """
-        self.container, place_list, ids, rotations, self.config, self.nfp_cache
-        """
+    def __init__(self, bin_polygon, combined_order_angle_paths, ids, rotations, config, nfp_cache):
 
-
-        self.bin_polygon = bin_polygon
-        self.paths = copy.deepcopy(paths)
-        self.ids = ids       # 图形原来的ID顺序
+        self.bin_polygon = bin_polygon                  # 板材信息(四个点，长/宽)
+        self.combined_order_angle_paths = copy.deepcopy(combined_order_angle_paths)               # 一个摆放顺序
+        self.ids = ids                                  # 图形原来的ID顺序
         self.rotations = rotations
         self.config = config
         self.nfpCache = nfp_cache or {}
 
     def place_paths(self):
-        # 排列图形
-        if self.bin_polygon is None:
-            return None
 
-        # rotate paths by given rotation
         rotated = list()
-        for i in range(0, len(self.paths)):
-            r = rotate_polygon(self.paths[i][1]['points'], self.paths[i][2])
-            r['rotation'] = self.paths[i][2]
-            r['source'] = self.paths[i][1]['p_id']
-            r['p_id'] = self.paths[i][0]
+        for i in range(0, len(self.combined_order_angle_paths)):
+            r = rotate_polygon(self.combined_order_angle_paths[i][1]['points'], self.combined_order_angle_paths[i][2])         # 旋转多边形，传入的是多边形的坐标，以及旋转角度，r是字典
+            r['rotation'] = self.combined_order_angle_paths[i][2]
+            r['source'] = self.combined_order_angle_paths[i][1]['p_id']                                   # source 到底是什么？为什么都是0？
+            r['p_id'] = self.combined_order_angle_paths[i][0]
             rotated.append(r)
 
-        paths = rotated
-        # 保存所有转移数据
+        paths = rotated                     # 这个paths的数据结构是一个list,每个元素都是字典形式
+        
         all_placements = list()
-        # 基因组的适应值
         fitness = 0
         bin_area = abs(polygon_area(self.bin_polygon['points']))
+        min_length = None
         min_width = None
+
         while len(paths) > 0:
-            placed = list()
+
+            placed = list()                                     # 存放已经放置了的零件
             placements = list()
-            # add 1 for each new bin opened (lower fitness is better)
-            fitness += 1
-            for i in range(0, len(paths)):
-                path = paths[i]
+            fitness += 1                                        # 适应度设置为开的容器的个数，容器越少适应度越好,之前设想的将适应度设置为利用率
+
+            for i in range(0, len(paths)):                      # 按顺序遍历零件
+                path = paths[i]                                 # path表示第i个零件的信息
                 # 图形的坐标
                 key = json.dumps({
                     'A': '-1',
@@ -148,7 +141,7 @@ class PlacementWorker():
 
                 finalNfp = [[{'x': p[0], 'y': p[1]}for p in polygon] for polygon in finalNfp]
 
-                min_width = None
+                min_length = None
                 min_area = None
                 min_x = None
 
@@ -188,7 +181,7 @@ class PlacementWorker():
                         if (min_area is None or area < min_area or almost_equal(min_area, area)) and (
                                         min_x is None or shift_vector['x'] <= min_x):
                             min_area = area
-                            min_width = rect_bounds['length']
+                            min_length = rect_bounds['length']
                             position = shift_vector
                             min_x = shift_vector['x']
 
@@ -196,8 +189,8 @@ class PlacementWorker():
                     placed.append(path)
                     placements.append(position)
 
-            if min_width:
-                fitness += min_width / bin_area
+            if min_length:
+                fitness += min_length / bin_area
 
             for p in placed:
                 p_id = paths.index(p)
@@ -212,5 +205,6 @@ class PlacementWorker():
                 break
 
         fitness += 2 * len(paths)
+        print("min_length = ", min_length)
         # print("{'placements': all_placements, 'fitness': fitness, 'paths': paths, 'area': bin_area} = ", {'placements': all_placements, 'fitness': fitness, 'paths': paths, 'area': bin_area} )
-        return {'placements': all_placements, 'fitness': fitness, 'paths': paths, 'area': bin_area}
+        return {'placements': all_placements, 'fitness': fitness, 'paths': paths, 'area': bin_area, 'min_length':min_length}

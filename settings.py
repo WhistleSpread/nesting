@@ -2,7 +2,7 @@
 
 POPULATION_SIZE = 3   # 种群中的个体数目
 # NUATATION = 0
-MUTA_RATE = 20          # 变异概率
+MUTA_RATE = 0.2         # 变异概率
 ROTATIONS = 1           # 旋转选择， 1： 不能旋转
 
 

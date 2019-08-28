@@ -2,87 +2,68 @@
 from nfp_function import Nester
 from tools import draw_utls, nfp_utls, input_utls
 from settings import BIN_LENGTH, BIN_NORMAL
+import cProfile
 
 
-def content_loop_rate(best, n, loop_time=20):
+def content_loop_rate(best, n, loop_times=20):
     """
     固定迭代次数:到了一定的迭代次数就停止
+    这里设置的是循环迭代20次，个循环都是run()一次
     """
-    res = best
-    run_time = loop_time
-    while run_time:
+    result = best
+
+    for i in range(loop_times):
         n.run()
-        best = n.best
-        # print best['fitness']
-        if best['fitness'] <= res['fitness']:
-            res = best
-            # print 'change', res['fitness']
-        run_time -= 1
-    draw_utls.draw_result(res['placements'], n.shapes, n.container, n.container_bounds)
+        if n.best['fitness'] <= result['fitness']:
+            result = n.best
+    
+    draw_utls.draw_result(result['placements'], n.shapes, n.container, n.container_bounds, result['min_length'])
 
 
-def set_target_loop(best, nest):
+def set_target_loop(best, nester):
     """
     把所有图形全部画出来就退出
-    :param best: 一个运行结果
-    :param nest: Nester class
-    :return:
     """
-    res = best
-    total_area = 0
-    rate = None
+    result = best; 
     num_placed = 0
+
     while True:
-        nest.run()
-        best = nest.best
-        if best['fitness'] <= res['fitness']:
-            res = best
-            for s_data in res['placements']:
-                tmp_total_area = 0.0
+        nester.run()
+        if best['fitness'] <= result['fitness']:
+            result = nester.best
+
+            for s_data in result['placements']:
                 tmp_num_placed = 0
-
                 for move_step in s_data:
-                    tmp_total_area += nest.shapes[int(move_step['p_id'])]['area']
                     tmp_num_placed += 1
-
-                tmp_rates = tmp_total_area / abs(nfp_utls.polygon_area(nest.container['points']))
-
-                if num_placed < tmp_num_placed or total_area < tmp_total_area or rate < tmp_rates:
-                    num_placed = tmp_num_placed
-                    total_area = tmp_total_area
-                    rate = tmp_rates
-        # 全部图形放下才退出
-        if num_placed == len(nest.shapes):
+                num_placed = tmp_num_placed
+                
+        if num_placed == len(nester.shapes):
             break
-    # 画图
-    draw_utls.draw_result(res['placements'], nest.shapes, nest.container, nest.container_bounds)
+    
+    draw_utls.draw_result(result['placements'], nester.shapes, nester.container, nester.container_bounds, result['min_length'])
 
-
+        
 if __name__ == '__main__':
     n = Nester()
-    s = input_utls.input_polygon('./data/test3.csv')
-    n.add_objects(s)
+    s = input_utls.input_polygon('./data/test.csv')
+    n.set_segments(s)
 
     if n.shapes_max_length > BIN_LENGTH:
-        # 更新后的面料长度比原来的容器，也就是bin的长度长的话，就更新bin的长度
-        # 也就是更新相应的坐标
+        # 更新后的面料长度比原来的容器，也就是bin的长度长的话，就更新bin的长度,也就是更新相应的坐标
         BIN_NORMAL[2][0] = n.shapes_max_length
         BIN_NORMAL[3][0] = n.shapes_max_length
 
 
-    # 选择面布
-    n.add_container(BIN_NORMAL)
-    # 运行计算
+    n.set_container(BIN_NORMAL)
     n.run()
-
-    # 设计退出条件
     best = n.best
     print("best = ", best)
-    # 放置在一个容器里面
-    set_target_loop(best, n)    # T6
 
-    # # 循环特定次数
-    # content_loop_rate(best, n, loop_time=2)   # T7 , T4
+    # 设置退出迭代的条件
+    set_target_loop(best, n)                                # 放完所有零件
+    cProfile.run('set_target_loop(best, n)')
+    # content_loop_rate(best, n, loop_times=2)              # 循环特定次数
 
 
 
