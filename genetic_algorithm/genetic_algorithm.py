@@ -22,7 +22,6 @@ class genetic_algorithm():
 
         self.populationSize = POPULATION_SIZE
         self.mutationRate = MUTA_RATE
-
         self.bin_info_dic = bin_info_dic
 
         placement_order = copy.deepcopy(segments_sorted_list)
@@ -36,24 +35,23 @@ class genetic_algorithm():
             mutated_individual = self.mutate(self.individual)
             self.population.append(mutated_individual)              # 这个种群中有3个individual, 每个individual代表一个顺序，也就是一个解
 
-    def random_angle(self, shape):
+    def random_angle(self, shape, angle):
         """
         如果全部都是(0, 180)的话，那么这个函数就没有必要了
         随机旋转角度的选取
         :param shape:
         :return:
         """
+        if angle == 0:
+            r_angle = 180
+        else:
+            r_angle = 0
 
-        # 感觉这里到angle_list 就直接设置成[0, 180]就好了
-        angle_list = [0, 180] 
-        # 查看选择后图形是否能放置在里面
-        for angle in angle_list:
-            # rotate_polygon 就是用来旋转多边形, 传入到是多边形到点到坐标，以及角度angle
-            rotate_part = nfp_utls.rotate_polygon(shape[1]['points'], angle)
-            # 是否判断旋转出界,没有出界可以返回旋转角度,rotate 只是尝试去转，没有真正改变图形坐标
-            if rotate_part['length'] < self.bin_info_dic['length'] and rotate_part['width'] < self.bin_info_dic['width']:
-                return angle
-        return 0
+        rotate_part = nfp_utls.rotate_polygon(shape[1]['points'], r_angle)
+        if rotate_part['length'] < self.bin_info_dic['length'] and rotate_part['width'] < self.bin_info_dic['width']:
+            return r_angle
+        return angle
+
 
     def mutate(self, individual):
         clone = {
@@ -67,7 +65,9 @@ class genetic_algorithm():
                     clone['placement_order'][i], clone['placement_order'][i+1] = clone['placement_order'][i+1], clone['placement_order'][i]
 
             if random.random() < self.mutationRate:             # 如果产生的随机数要小于设置的变异概率，就随机变换角度
-                clone['rotation'][i] = self.random_angle(clone['placement_order'][i])
+                clone['rotation'][i] = self.random_angle(clone['placement_order'][i], clone['rotation'][i])
+
+                # clone['rotation'][i] = self.random_angle(clone['placement_order'][i])
         return clone
 
     def generation(self):

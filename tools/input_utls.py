@@ -14,8 +14,6 @@ def find_shape_from_file(file_name):
         a = (json.loads(record['外轮廓']))
         all_shapes.append(a)
         # print("all_shapes = ", all_shapes)
-        # print(type(record))
-        # all_shapes.append(int(record['外轮廓']))
     return all_shapes
 
 def input_polygon(file_path):

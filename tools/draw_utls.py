@@ -43,7 +43,7 @@ def draw_result(shift_data, polygons, bin_polygon, bin_bounds, min_length):     
         shapes.append(Polygon.Polygon(contour))
 
     bin_shape = Polygon.Polygon([[p['x'], p['y']] for p in bin_polygon['points']])      # 板材坐标
-    shape_area = bin_shape.area(0)                                                      # 板材总面积
+    print("bin_shape = ", bin_shape)
 
     solution = list()
     rates = list()
@@ -62,9 +62,6 @@ def draw_result(shift_data, polygons, bin_polygon, bin_bounds, min_length):     
         print("rates = ", rates)
         solution.append(tmp_bin)
     
-    print("total area = ", total_area)
-    print("shape area = ", shape_area)
-    print("rates = ", rates)
 
     # 显示结果
     draw_polygon(solution, rates, bin_bounds, bin_shape)
