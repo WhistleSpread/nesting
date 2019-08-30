@@ -6,6 +6,7 @@ from settings import ROTATIONS,POPULATION_SIZE, MUTA_RATE
 
 
 class genetic_algorithm():
+
     def __init__(self, segments_sorted_list, bin_info_dic):
         """
         初始化参数，根据参数生成基因群
@@ -18,8 +19,6 @@ class genetic_algorithm():
         {'width': 20000, 'points': [{'y': 0, 'x': 0}, {'y': 1600, 'x': 0}, {'y': 1600, 'x': 20000}, {'y': 0, 'x': 20000}], 
             'p_id': '-1', 'height': 1600})
         """
-
-
         self.populationSize = POPULATION_SIZE
         self.mutationRate = MUTA_RATE
         self.bin_info_dic = bin_info_dic
@@ -37,10 +36,9 @@ class genetic_algorithm():
 
     def random_angle(self, shape, angle):
         """
-        如果全部都是(0, 180)的话，那么这个函数就没有必要了
-        随机旋转角度的选取
-        :param shape:
-        :return:
+        :param shape:  point of one segment
+        :param angle:  angle of one segment
+        :return: angle or random_angle one of (0, 180)
         """
         if angle == 0:
             r_angle = 180
@@ -51,7 +49,6 @@ class genetic_algorithm():
         if rotate_part['length'] < self.bin_info_dic['length'] and rotate_part['width'] < self.bin_info_dic['width']:
             return r_angle
         return angle
-
 
     def mutate(self, individual):
         clone = {
@@ -67,13 +64,10 @@ class genetic_algorithm():
             if random.random() < self.mutationRate:             # 如果产生的随机数要小于设置的变异概率，就随机变换角度
                 clone['rotation'][i] = self.random_angle(clone['placement_order'][i], clone['rotation'][i])
 
-                # clone['rotation'][i] = self.random_angle(clone['placement_order'][i])
         return clone
 
     def generation(self):
-        """
-        有了种群，于是开始繁衍
-        """
+
         # 适应度 从大到小排序
         # print("self.population = ", self.population)
         self.population = sorted(self.population, key=lambda a: a['fitness'])

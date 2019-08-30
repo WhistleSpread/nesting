@@ -8,9 +8,9 @@ import pyclipper
 class PlacementWorker():
     def __init__(self, bin_polygon, combined_order_angle_paths, ids, rotations, config, nfp_cache):
 
-        self.bin_polygon = bin_polygon                  # 板材信息(四个点，长/宽)
-        self.combined_order_angle_paths = copy.deepcopy(combined_order_angle_paths)               # 一个摆放顺序
-        self.ids = ids                                  # 图形原来的ID顺序
+        self.bin_polygon = bin_polygon                                                              # 板材信息(四个点，长/宽)
+        self.combined_order_angle_paths = copy.deepcopy(combined_order_angle_paths)                 # 一个摆放顺序
+        self.ids = ids                                                                              # 图形原来的ID顺序
         self.rotations = rotations
         self.config = config
         self.nfpCache = nfp_cache or {}
@@ -19,29 +19,28 @@ class PlacementWorker():
 
         rotated = list()
         for i in range(0, len(self.combined_order_angle_paths)):
-            r = rotate_polygon(self.combined_order_angle_paths[i][1]['points'], self.combined_order_angle_paths[i][2])         # 旋转多边形，传入的是多边形的坐标，以及旋转角度，r是字典
+            r = rotate_polygon(self.combined_order_angle_paths[i][1]['points'], self.combined_order_angle_paths[i][2])
             r['rotation'] = self.combined_order_angle_paths[i][2]
-            r['source'] = self.combined_order_angle_paths[i][1]['p_id']                                   # source 到底是什么？为什么都是0？
             r['p_id'] = self.combined_order_angle_paths[i][0]
             rotated.append(r)
 
-        paths = rotated                     # 这个paths的数据结构是一个list,每个元素都是字典形式
+        paths = rotated                                         # 这个paths的数据结构是一个list,每个元素都是字典形式
         
         all_placements = list()
         fitness = 0
         bin_area = abs(polygon_area(self.bin_polygon['points']))
         min_length = None
-        min_width = None
 
         while len(paths) > 0:
 
             placed = list()                                     # 存放已经放置了的零件
             placements = list()
+            print("fitness = ", fitness)
             fitness += 1                                        # 适应度设置为开的容器的个数，容器越少适应度越好,之前设想的将适应度设置为利用率
 
             for i in range(0, len(paths)):                      # 按顺序遍历零件
                 path = paths[i]                                 # path表示第i个零件的信息
-                # 图形的坐标
+
                 key = json.dumps({
                     'A': '-1',
                     'B': path['p_id'],
@@ -54,11 +53,9 @@ class PlacementWorker():
                 if binNfp is None or len(binNfp) == 0:
                     continue
 
-                # part unplaceable, skip
-                error = False
+                error = False                                   # part unplaceable, skip
 
-                # ensure all necessary NFPs exist
-                for p in placed:
+                for p in placed:  # ensure all necessary NFPs exist
                     key = json.dumps({
                         'A': p['p_id'],
                         'B': path['p_id'],
@@ -71,8 +68,7 @@ class PlacementWorker():
                         error = True
                         break
 
-                # part unplaceable, skip
-                if error:
+                if error:                                       # part unplaceable, skip
                     continue
 
                 position = None
@@ -124,8 +120,7 @@ class PlacementWorker():
                 try:
                     clipper.AddPaths(clipper_bin_nfp, pyclipper.PT_SUBJECT, True)
                 except:
-                    # print u'图形坐标出错', clipper_bin_nfp
-                    print ('图形坐标出错', clipper_bin_nfp)
+                    print('图形坐标出错', clipper_bin_nfp)
 
                 # choose placement that results in the smallest bounding box
                 finalNfp = clipper.Execute(pyclipper.CT_DIFFERENCE, pyclipper.PFT_NONZERO, pyclipper.PFT_NONZERO)
@@ -146,7 +141,6 @@ class PlacementWorker():
                 min_x = None
 
                 for nf in finalNfp:
-
                     if abs(polygon_area(nf)) < 2:
                         continue
 
@@ -206,5 +200,5 @@ class PlacementWorker():
 
         fitness += 2 * len(paths)
         print("min_length = ", min_length)
-        # print("{'placements': all_placements, 'fitness': fitness, 'paths': paths, 'area': bin_area} = ", {'placements': all_placements, 'fitness': fitness, 'paths': paths, 'area': bin_area} )
-        return {'placements': all_placements, 'fitness': fitness, 'paths': paths, 'area': bin_area, 'min_length':min_length}
+        return {'placements': all_placements, 'fitness': fitness, 'paths': paths,
+                'area': bin_area, 'min_length':min_length}

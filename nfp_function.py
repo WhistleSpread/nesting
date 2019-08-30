@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import math
 import json
-import random
 import copy
-import Polygon
 from genetic_algorithm import genetic_algorithm
-from tools import placement_worker, nfp_utls, draw_utls
+from tools import placement_worker, nfp_utls
 import pyclipper
 
 from settings import SPACING, ROTATIONS, BIN_WIDTH, POPULATION_SIZE, MUTA_RATE
@@ -75,13 +72,12 @@ class Nester:
         self.container['width'] = a['width']
         self.container_bounds = a
 
-
     def run(self):
         """
         run(): Runs a nesting operation. Returns a list of lists of
         shapes, each primary list being one filled container, or None
         if the operation failed.
-        如果开多线程，可以在这里设计检查中断信号
+        try Multi threading, and check exception
         """
 
         if not self.container:
@@ -90,7 +86,6 @@ class Nester:
         if not self.shapes:
             print("Empty shapes. Aborting")
             return
-        
 
         segments_sorted_list = list()
         for i in range(0, len(self.shapes)):
@@ -110,6 +105,7 @@ class Nester:
         if self.GA is None:
             bin_info_dic = copy.deepcopy(self.container)
 
+            """
             # 首先它也是一个字典，key-value, key 分别有 points, p_id, width, height, 其实这里应该改成是length, width
             # 这里需要修改一些，因为在比赛的时候，我们的bin的边距是为0的，并不是spaceing 5mm
             # print("offset_bin_before = ", offset_bin)
@@ -117,10 +113,10 @@ class Nester:
             # offset_bin['points'] = self.polygon_offset(self.container['points'], self.config['spacing'])
 
             # print("offset_bin_after = ", offset_bin)
-            """
+            
             从这个结果可以看出，这个地方的polygon_offset 算法是有问题的 可以先不考虑offset来运行一遍，之后再修改，考虑
             这个offset， 这个很明显就有错误！！！
-
+            
             ('offset_bin_before = ', 
             {'width': 20000, 'points': [{'y': 0, 'x': 0}, {'y': 1600, 'x': 0}, {'y': 1600, 'x': 20000}, {'y': 0, 'x': 20000}], 
             'p_id': '-1', 'height': 1600})
@@ -133,8 +129,6 @@ class Nester:
             {'y': -5, 'x': 0}, {'y': -5, 'x': 20000}],
              'p_id': '-1', 'height': 1600})
             """
-            # 这个地方应该是得到一个初始种群，也就是初始解;
-
             self.GA = genetic_algorithm.genetic_algorithm(segments_sorted_list, bin_info_dic)
         else:
             self.GA.generation()
@@ -143,9 +137,8 @@ class Nester:
             result_info_dic = self.find_fitness(self.GA.population[i])
             self.GA.population[i]['fitness'] = result_info_dic['fitness']
             self.results.append(result_info_dic)
-        
-        
-        if len(self.results) > 0:                   # 找最佳结果
+
+        if len(self.results) > 0:
             best_result = self.results[0]
 
             for p in self.results:
@@ -157,13 +150,14 @@ class Nester:
 
     def find_fitness(self, individual):
         """
-        求解适应值,这里设置的适应度的值为所需要箱子的个数, 输入的是每一个解决方案，输入的是适应值
-        :param individual: 传入的是一个individual,也就是一个解
+        get fitness of an individual, a solution, a place order
+        :param individual: a solution
         """
 
         place_order_list = copy.deepcopy(individual['placement_order'])
         rotation_list = copy.deepcopy(individual['rotation'])
-        ids = [p[0] for p in place_order_list]                  # 零件排列的顺序
+
+        ids = [p[0] for p in place_order_list]                          # order of segments
 
         for i in range(0, len(place_order_list)):
             place_order_list[i].append(rotation_list[i])
@@ -173,28 +167,28 @@ class Nester:
         nfp_pairs = list()
         new_cache = dict()
 
-        for i in range(0, len(combined_order_angle_list)):      # 计算零件与容器的内接多边形
+        for i in range(0, len(combined_order_angle_list)):              # get IFR inner fit Rectangle
             segment_i = combined_order_angle_list[i]
-
-            key = {                                             # 用key表示信息
-                'A': '-1',                                      # -1 表示容器
-                'B': segment_i[0],                              # segment_i[0]是顺序index
+            key = {
+                'A': '-1',                                              # -1 stand for the container
+                'B': segment_i[0],                                      # segment_i[0] is the index of segment_i
                 'inside': True,
-                'A_rotation': 0,                                # 零件A是固定的
-                'B_rotation': rotation_list[i]                  # 零件B就是这个零件旋转的角度
+                'A_rotation': 0,
+                'B_rotation': rotation_list[i]
             }
+
             tmp_json_key = json.dumps(key)
 
             if not (tmp_json_key in self.nfp_cache.keys()):
                 nfp_pairs.append({
                     'A': self.container,
-                    'B': segment_i[1],                              # segment_i[1] 是多边形的点的坐标
+                    'B': segment_i[1],                                  # segment_i[1] is coords of segment_i
                     'key': key
                 })
             else:
                 new_cache[tmp_json_key] = self.nfp_cache[tmp_json_key]
 
-            for j in range(0, i):                                   # 计算零件i与已经放置好了的零件j之间的外切多边形计算
+            for j in range(0, i):                                       # get nfp of seg_i and seg_j
                 placed_segment_j = combined_order_angle_list[j]
 
                 key = {
@@ -214,18 +208,27 @@ class Nester:
                     })
                 else:
                     new_cache[tmp_json_key] = self.nfp_cache[tmp_json_key]
-                
 
-        self.nfp_cache = new_cache                                  # 每一轮,也就是对每一个解过后，更新一次nfp_cache
+            # with open("中间结果.json", "a") as f:
+            #     f.write("new_cache" + str(new_cache))
+            #     f.write("nfp_pairs" + str(nfp_pairs))
 
-        # 计算图形的转移量和适应值的类
-        self.worker = placement_worker.PlacementWorker(self.container, combined_order_angle_list, ids, rotation_list, self.config, self.nfp_cache)
+            # print("nfp_pairs = ", nfp_pairs)
+            # print("len(nfp_pairs)", len(nfp_pairs))
+            # print("new_cache = ", new_cache)
 
-        # 计算所有图形两两组合的相切多边形（NFP）
+        self.nfp_cache = new_cache                                      # 每一轮,也就是对每一个解过后，更新一次nfp_cache
+        # with open("中间结果.json", "a") as f:
+        #     f.write("self.nfp_cache" + str(self.nfp_cache))
+
+        self.worker = placement_worker.PlacementWorker(self.container, combined_order_angle_list, ids, rotation_list,
+                                                       self.config, self.nfp_cache)
+
         pair_list = list()
-
         for pair in nfp_pairs:
-            pair_list.append(self.process_nfp(pair))                # 这个地方计算nfp_pair花了好久啊？;nfp_pair 有49455，这个也太多了吧? 时间最多了
+            pair_list.append(self.process_nfp(pair))                    # 这个地方计算nfp_pair花了好久啊？;nfp_pair 有49455，这个也太多了吧? 时间最多了
+            with open("pair_list.json", "a") as f:
+                f.write("pair_list" + str(pair_list)+"\n")
         return self.generate_nfp(pair_list)
 
     def process_nfp(self, pair):
@@ -239,7 +242,6 @@ class Nester:
         search_edges = self.config['exploreConcave']
         use_holes = self.config['useHoles']
 
-        # 图形参数
         A = copy.deepcopy(pair['A'])
         A['points'] = nfp_utls.rotate_polygon(A['points'], pair['key']['A_rotation'])['points']             # 旋转后的A
         B = copy.deepcopy(pair['B'])
@@ -307,21 +309,19 @@ class Nester:
                 pass
         return {'key': pair['key'], 'value': nfp}
 
-    def generate_nfp(self, nfp):
+    def generate_nfp(self, nfp_list):
         """
         计算图形的转移量和适应值
-        :param nfp: nfp多边形数据
+        :param nfp_list: nfp多边形数据list
         :return:
         """
-        if nfp:
-            for i in range(0, len(nfp)):
-                if nfp[i]:
-                    key = json.dumps(nfp[i]['key'])
-                    self.nfp_cache[key] = nfp[i]['value']                   # 在这里不同的key对应不同的nfp多边形value
+        if nfp_list:
+            for i in range(0, len(nfp_list)):
+                if nfp_list[i]:
+                    key = json.dumps(nfp_list[i]['key'])
+                    self.nfp_cache[key] = nfp_list[i]['value']                   # 在这里不同的key对应不同的nfp多边形value
 
-        # worker的nfp cache 只保留一次
         self.worker.nfpCache = copy.deepcopy(self.nfp_cache)
-        # self.worker.nfpCache.update(self.nfpCache)
         return self.worker.place_paths()
 
     def polygon_offset(self, polygon, offset):

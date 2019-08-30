@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from nfp_function import Nester
-from tools import draw_utls, nfp_utls, input_utls
+from tools import draw_utls, input_utls
 from settings import BIN_LENGTH, BIN_NORMAL
 import cProfile
+import time
 
 
 def content_loop_rate(best, n, loop_times=20):
@@ -45,6 +46,9 @@ def set_target_loop(best, nester):
 
         
 if __name__ == '__main__':
+
+    start = time.time()
+
     n = Nester()
     s = input_utls.input_polygon('./data/test3.csv')
     n.set_segments(s)
@@ -54,16 +58,21 @@ if __name__ == '__main__':
     #     BIN_NORMAL[2][0] = n.shapes_max_length
     #     BIN_NORMAL[3][0] = n.shapes_max_length
 
-
     n.set_container(BIN_NORMAL)
     n.run()
     best = n.best
     print("best = ", best)
 
+
     # 设置退出迭代的条件
     set_target_loop(best, n)                                # 放完所有零件
-    cProfile.run('set_target_loop(best, n)')
+    # cProfile.run('set_target_loop(best, n)')
     # content_loop_rate(best, n, loop_times=2)              # 循环特定次数
+
+    end = time.time()
+    print('Running time: %s Seconds' % (end - start))
+    print('Running time: %s Hours' % ((end - start)/3600))
+
 
 
 
