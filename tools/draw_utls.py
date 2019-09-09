@@ -51,6 +51,7 @@ def draw_original_polygon(shapes, bin_bounds, bin_shape):
     
     plt.show()
 
+
 def draw_result_polygons(shapes, bin_bounds, bin_shape):
 
     fig1 = plt.figure(); fig1.suptitle('original Polygons', fontweight='bold')

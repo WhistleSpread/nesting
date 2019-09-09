@@ -23,13 +23,19 @@ def content_loop_rate(best, n, loop_times=20):
 
 
 def set_target_loop(best, nester):
-    result = best; num_placed = 0
+    """
 
+    :param best:
+    :param nester:
+    :return:
+    """
+
+    result = best
+    num_placed = 0
     while True:
         nester.run()
         if best['fitness'] <= result['fitness']:
             result = nester.best
-
             for s_data in result['placements']:
                 num_placed = len(s_data)
                 
@@ -44,35 +50,28 @@ if __name__ == '__main__':
     start = time.time()
 
     n = Nester()
-    shapes = input_utls.input_polygon('./data/L0002_lingjian.csv')
+    # shapes = input_utls.input_polygon('./data/L0002_lingjian.csv')
     # shapes = input_utls.input_polygon('./data/L0003_lingjian.csv')
-    # shapes = input_utls.input_polygon('./data/test.csv')
+    shapes = input_utls.input_polygon('./data/test3.csv')
     n.set_segments(shapes)
-
 
     # if n.shapes_max_length > BIN_LENGTH:
     #     # 更新后的面料长度比原来的容器，也就是bin的长度长的话，就更新bin的长度,也就是更新相应的坐标
     #     BIN_NORMAL[2][0] = n.shapes_max_length
     #     BIN_NORMAL[3][0] = n.shapes_max_length
 
-
-
-    # n.set_container(BIN_NORMAL)
+    n.set_container(BIN_NORMAL)
 
     # bin_bounds = n.container_bounds
     # bin_polygon = n.container
     # bin_shape = Polygon.Polygon([[p['x'], p['y']] for p in bin_polygon['points']])
-    
     # # draw_utls.draw_original_polygon(shapes, bin_bounds, bin_shape)
     # result_shapes = input_utls.input_polygon('./data/L0002_lingjian.csv')
     # draw_utls.draw_result_polygons(result_shapes, bin_bounds, bin_shape)
 
-
     n.run()
-
     best = n.best
     # print("best = ", best)
-
 
     # 设置退出迭代的条件
     set_target_loop(best, n)                                # 放完所有零件

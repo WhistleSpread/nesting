@@ -15,9 +15,8 @@ class Nester:
         self.container = container
         self.shapes = shapes
         self.total_segments_area = 0
-        self.shapes_max_length = 0                      
         self.results = list()                           # storage for the different results
-        self.nfp_cache = {}                             # 缓存中间计算结果
+        self.nfp_cache = {}
         self.config = {
             'curveTolerance': 0.3,                      # 允许的最大误差转换贝济耶和圆弧线段。在SVG的单位。更小的公差将需要更长的时间来计算
             'spacing': SPACING,                         # 组件间的间隔
@@ -30,30 +29,26 @@ class Nester:
 
         self.GA = None       
         self.best = None  
-        self.worker = None                              # 根据NFP结果，计算每个图形的转移数据
+        self.worker = None                              # 根据NFP结果，计算每个图形的移动数据
         self.container_bounds = None                    # 容器的最小包络矩形作为输出图的坐标
 
     def set_segments(self, segments_lists):
         """
         :param segments_lists: [[point of segment 1], [], ..., [point of segment 314]]
         :return:
+        self.shapes: a list of dictionary, with each dictionary contain information of each segment
         self.shapes: [{area: , p_id: , points:[{'x': , 'y': }...]},... {area: , p_id: , points:[{'x': , 'y': }...]}]
         self.total_segments_area : total area of all segments
         """
 
-        if not isinstance(segments_lists, list):
-            segments_lists = [segments_lists]
-        if not self.shapes:
-            self.shapes = []
-
+        self.shapes = []
         p_id = 1; total_area = 0
 
         for segment_cord in segments_lists:
             shape = {'area': 0, 'p_id': str(p_id), 'points': [{'x': p[0], 'y': p[1]} for p in segment_cord]}
             p_id = p_id + 1
-
             seg_area = nfp_utls.polygon_area(shape['points'])
-            if seg_area > 0:                                        # 因为设置的是顺时针，所以应该小于0
+            if seg_area > 0:                                        # 因为设置的是顺时针，所以用公式计算的面积应该小于0
                 shape['points'].reverse()                           # 确定多边形的线段方向, 多边形方向为逆时针时，S < 0 ;多边形方向为顺时针时，S > 0
             shape['area'] = abs(seg_area)
             total_area += shape['area']
@@ -61,11 +56,8 @@ class Nester:
 
         self.total_segments_area = total_area
 
-        self.shapes_max_length = total_area / BIN_WIDTH * 3         # 更新一下面料的长度, 不过暂时没有明白这里的面料长度有什么作用
-
     def set_container(self, container):
         """
-
         :param container: BIN_NORMAL = [[0, 0], [0, BIN_WIDTH], [BIN_LENGTH, BIN_WIDTH], [BIN_LENGTH, 0]]
         :return:
         self.container:
@@ -76,16 +68,18 @@ class Nester:
             'width':
         }
 
-        self.container_bounds = {   'x': xmin,
-                                    'y': ymin,
-                                    'length': xmax - xmin,
-                                    'width': ymax - ymin }
+        self.container_bounds =
+        {   'x': xmin,
+            'y': ymin,
+            'length': xmax - xmin,
+            'width': ymax - ymin
+        }
         bottom-left point ('x', 'y')  length and width of this rectangle container
         """
 
         if not self.container:
             self.container = {}
-    
+
         self.container['points'] = [{'x': p[0], 'y':p[1]} for p in container]
         self.container['p_id'] = '-1'
         a = nfp_utls.get_polygon_bounds(self.container['points'])
@@ -535,10 +529,13 @@ class Nester:
 
     def polygon_offset(self, polygon, offset):
         """
-        offset 表示偏移量, 这个偏移量其实就是组件间的间隔，在本次比赛中设置的5mm
-        polygon 是shape['points'],就是一个list,list中的每个元素都是一个字典{x:,y:}
-        不过这个函数貌似有问题，这个库用的不好
+
+        :param polygon:
+        [{'x': , 'y': }...{'x': 'y': }]
+        :param offset: 5
+        :return:
         """
+
         # is_list 是一个flag, 表示是不是一个列表, 不过这里设置这个flag有什么作用呢？
 
         is_list = True
