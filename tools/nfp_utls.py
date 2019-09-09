@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import math
+
 TOL = 0.0000001   # 计算过程中误差忽略值
 
 
@@ -88,39 +89,27 @@ def on_segment(A, B, p):
 
 def nfp_rectangle(A, B):
     """
-    :param A: {x:12, y:10}
-    :param B: {x:12, y:10}
+    :param A: [{'x': , 'y': }...{'x': , 'y': }]
+    :param B: [{'x': , 'y': }...{'x': , 'y': }]
     :return:
     """
-    min_ax = A[0]['x']
-    min_ay = A[0]['y']
-    max_ax = A[0]['x']
-    max_ay = A[0]['y']
+    min_ax = A[0]['x']; min_ay = A[0]['y']
+    max_ax = A[0]['x']; max_ay = A[0]['y']
 
     for point in A[1:]:
-        if point['x'] < min_ax:
-            min_ax = point['x']
-        if point['x'] > max_ax:
-            max_ax = point['x']
-        if point['y'] < min_ay:
-            min_ay = point['y']
-        if point['y'] > max_ay:
-            max_ay = point['y']
+        if point['x'] < min_ax: min_ax = point['x']
+        if point['x'] > max_ax: max_ax = point['x']
+        if point['y'] < min_ay: min_ay = point['y']
+        if point['y'] > max_ay: max_ay = point['y']
 
-    min_bx = B[0]['x']
-    min_by = B[0]['y']
-    max_bx = B[0]['x']
-    max_by = B[0]['y']
+    min_bx = B[0]['x']; min_by = B[0]['y']
+    max_bx = B[0]['x']; max_by = B[0]['y']
 
     for point in B[1:]:
-        if point['x'] < min_bx:
-            min_bx = point['x']
-        if point['x'] > max_bx:
-            max_bx = point['x']
-        if point['y'] < min_by:
-            min_by = point['y']
-        if point['y'] > max_by:
-            max_by = point['y']
+        if point['x'] < min_bx: min_bx = point['x']
+        if point['x'] > max_bx: max_bx = point['x']
+        if point['y'] < min_by: min_by = point['y']
+        if point['y'] > max_by: max_by = point['y']
 
     if max_bx - min_bx > max_ax - min_ax:
         return None

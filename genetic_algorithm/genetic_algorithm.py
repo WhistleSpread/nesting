@@ -9,16 +9,36 @@ class genetic_algorithm():
 
     def __init__(self, segments_sorted_list, bin_info_dic):
         """
-        初始化参数，根据参数生成基因群
         :param segments_sorted_list:
-        segments_sorted_list 基本的数据结构是一个list, 而且是有序的list，按照面积从大到小排列
-        这个list的每一个元素也是一个list[第几个零件，这个零件的shape], 而shape信息中包含有 points, p_id, area，
-        这三个都是以键值对的形式存在，并且point的值是一个list,这个list的每个元素都是一个点{x:, y:}
+            [
+            [1, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+            [2, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+            ...
+            [314, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+            ]
 
-        :param bin_polygon: 就是offset_bin 画布，板材什么的 这个offset_bin的内容主要包含有：
-        {'width': 20000, 'points': [{'y': 0, 'x': 0}, {'y': 1600, 'x': 0}, {'y': 1600, 'x': 20000}, {'y': 0, 'x': 20000}], 
-            'p_id': '-1', 'height': 1600})
+        :param bin_info_dic = self.container :
+            {
+                'points':[{'x':, 'y': }, {'x':, 'y':}, {'x':, 'y':}, {'x':, 'y':}],
+                'p_id':-1,
+                'length': ,
+                'width':
+            }
+        :return
+        self.individual =
+            {
+                'placement_order':
+                [
+                [1, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+                [2, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+                ...
+                [314, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+                ]
+                'rotation': [0, 0, ..., 0]
+            }
+        self.population = [{self.individual}, {self.individual_2}, ...{self.individual_size}]
         """
+
         self.populationSize = POPULATION_SIZE
         self.mutationRate = MUTA_RATE
         self.bin_info_dic = bin_info_dic
@@ -26,13 +46,12 @@ class genetic_algorithm():
         placement_order = copy.deepcopy(segments_sorted_list)
         angles = [0]*len(placement_order)
 
-        # placement
         self.individual = {'placement_order': placement_order, 'rotation': angles}
         self.population = [self.individual]
 
         for i in range(1, self.populationSize):
             mutated_individual = self.mutate(self.individual)
-            self.population.append(mutated_individual)              # 这个种群中有3个individual, 每个individual代表一个顺序，也就是一个解
+            self.population.append(mutated_individual)
 
     def random_angle(self, shape, angle):
         """
@@ -40,17 +59,68 @@ class genetic_algorithm():
         :param angle:  angle of one segment
         :return: angle or random_angle one of (0, 180)
         """
-        if angle == 0:
-            r_angle = 180
-        else:
-            r_angle = 0
 
-        rotate_part = nfp_utls.rotate_polygon(shape[1]['points'], r_angle)
-        if rotate_part['length'] < self.bin_info_dic['length'] and rotate_part['width'] < self.bin_info_dic['width']:
-            return r_angle
-        return angle
+
+        # 为什么用这种算法最后有的零件不显示出来呢？奇怪？
+        # 这个函数改了后，算法的收敛性慢了好多；
+
+        # def valid_rotate(shape, angle):
+        #     rotate_part = nfp_utls.rotate_polygon(shape[1]['points'], angle)
+        #     if rotate_part['length'] < self.bin_info_dic['length'] and rotate_part['width'] < self.bin_info_dic['width']:
+        #         return True
+        #     else:
+        #         return False
+
+        # if angle == 0:
+        #     if valid_rotate(shape, 180):
+        #         return 180
+        #     return 0
+        # else:
+        #     if valid_rotate(shape, 0):
+        #         return 0
+        #     return 180
+
+
+        # 感觉这里到angle_list 就直接设置成[0, 180]就好了
+
+        angle_list = [0, 180]
+        # 查看选择后图形是否能放置在里面
+        for angle in angle_list:
+            # rotate_polygon 就是用来旋转多边形, 传入到是多边形到点到坐标，以及角度angle
+            rotate_part = nfp_utls.rotate_polygon(shape[1]['points'], angle)
+            # 是否判断旋转出界,没有出界可以返回旋转角度,rotate 只是尝试去转，没有真正改变图形坐标
+            if rotate_part['length'] < self.bin_info_dic['length'] and rotate_part['width'] < self.bin_info_dic['width']:
+                return angle
+        return 0
 
     def mutate(self, individual):
+        """
+
+        :param individual:
+        {
+            'placement_order':
+            [
+            [1, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+            [2, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+            ...
+            [314, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+            ]
+            'rotation': [0, 0, ..., 0]
+        }
+
+        :return: clone :
+        {
+            'placement_order':
+            [
+            [3, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+            [8, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+            ...
+            [314, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+            ]
+            'rotation': [0, 0, ..., 0]
+        }
+        """
+
         clone = {
             'placement_order': individual['placement_order'][:],
             'rotation': individual['rotation'][:]

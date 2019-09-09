@@ -13,7 +13,8 @@ class Nester:
     def __init__(self, container=None, shapes=None):
 
         self.container = container
-        self.shapes = shapes    
+        self.shapes = shapes
+        self.total_segments_area = 0
         self.shapes_max_length = 0                      
         self.results = list()                           # storage for the different results
         self.nfp_cache = {}                             # 缓存中间计算结果
@@ -33,34 +34,54 @@ class Nester:
         self.container_bounds = None                    # 容器的最小包络矩形作为输出图的坐标
 
     def set_segments(self, segments_lists):
+        """
+        :param segments_lists: [[point of segment 1], [], ..., [point of segment 314]]
+        :return:
+        self.shapes: [{area: , p_id: , points:[{'x': , 'y': }...]},... {area: , p_id: , points:[{'x': , 'y': }...]}]
+        self.total_segments_area : total area of all segments
+        """
 
         if not isinstance(segments_lists, list):
             segments_lists = [segments_lists]
         if not self.shapes:
             self.shapes = []
 
-        p_id = 0
-        total_area = 0
+        p_id = 1; total_area = 0
 
         for segment_cord in segments_lists:
+            shape = {'area': 0, 'p_id': str(p_id), 'points': [{'x': p[0], 'y': p[1]} for p in segment_cord]}
+            p_id = p_id + 1
 
-            shape = {
-                'area': 0,
-                'p_id': str(p_id),
-                'points': [{'x': p[0], 'y': p[1]} for p in segment_cord]
-            }
-
-            area = nfp_utls.polygon_area(shape['points'])
-            if area > 0:                                    # 因为设置的是顺时针，所以应该小于0
-                shape['points'].reverse()                   # 确定多边形的线段方向, 多边形方向为逆时针时，S < 0 ;多边形方向为顺时针时，S > 0
-            shape['area'] = abs(area)
-
+            seg_area = nfp_utls.polygon_area(shape['points'])
+            if seg_area > 0:                                        # 因为设置的是顺时针，所以应该小于0
+                shape['points'].reverse()                           # 确定多边形的线段方向, 多边形方向为逆时针时，S < 0 ;多边形方向为顺时针时，S > 0
+            shape['area'] = abs(seg_area)
             total_area += shape['area']
             self.shapes.append(shape)
 
-        self.shapes_max_length = total_area / BIN_WIDTH * 3         # 更新一下面料的长度
+        self.total_segments_area = total_area
+
+        self.shapes_max_length = total_area / BIN_WIDTH * 3         # 更新一下面料的长度, 不过暂时没有明白这里的面料长度有什么作用
 
     def set_container(self, container):
+        """
+
+        :param container: BIN_NORMAL = [[0, 0], [0, BIN_WIDTH], [BIN_LENGTH, BIN_WIDTH], [BIN_LENGTH, 0]]
+        :return:
+        self.container:
+        {
+            'points':[{'x':, 'y': }, {'x':, 'y':}, {'x':, 'y':}, {'x':, 'y':}],
+            'p_id':-1,
+            'length': ,
+            'width':
+        }
+
+        self.container_bounds = {   'x': xmin,
+                                    'y': ymin,
+                                    'length': xmax - xmin,
+                                    'width': ymax - ymin }
+        bottom-left point ('x', 'y')  length and width of this rectangle container
+        """
 
         if not self.container:
             self.container = {}
@@ -74,12 +95,20 @@ class Nester:
 
     def run(self):
         """
-        run(): Runs a nesting operation. Returns a list of lists of
-        shapes, each primary list being one filled container, or None
-        if the operation failed.
-        try Multi threading, and check exception
-        """
+        1. preprocess points of each segment, use function polygon_offset to update segment['points']
+        2. reorder segment_list in  in descending order of area
+        3. arrange new data structure, [[order, segment],..., [order, segment]]
+        :return:
+        segments_sorted_list :
+        [
+        [1, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+        [2, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+        ...
+        [314, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+        ]
 
+        call self.launch_workers(segments_sorted_list)
+        """
         if not self.container:
             print("Empty container. Aborting")
             return
@@ -88,47 +117,39 @@ class Nester:
             return
 
         segments_sorted_list = list()
-        for i in range(0, len(self.shapes)):
+        for i in range(0, len(self.shapes)):                # 这里修改一下，从1开始比较好
             segment = copy.deepcopy(self.shapes[i])
-            segment['points'] = self.polygon_offset(segment['points'], self.config['spacing'])  #调用polygon_offset 来设置零件之间的间距, 得到新的points,不懂
+            segment['points'] = self.polygon_offset(segment['points'], self.config['spacing'])
             segments_sorted_list.append([str(i), segment])
 
-        segments_sorted_list = sorted(segments_sorted_list, reverse=True, key=lambda face: face[1]['area'])
+        segments_sorted_list = sorted(segments_sorted_list, reverse=True, key=lambda o_segment: o_segment[1]['area'])
         return self.launch_workers(segments_sorted_list)
 
     def launch_workers(self, segments_sorted_list):
         """
-        主过程，根据生成的基因组，求适应值，找最佳结果
-        这个list的每一个元素也是一个list[第几个零件，这个零件的shape], 而shape信息中包含有 points, p_id, area，
-        这三个都是以键值对的形式存在，并且point的值是一个list,这个list的每个元素都是一个点{x:, y:}
+        call genetic method
+        :param segments_sorted_list:
+        [
+        [1, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+        [2, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+        ...
+        [314, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+        ]
+
+        :param bin_info_dic = self.container :
+        {
+            'points':[{'x':, 'y': }, {'x':, 'y':}, {'x':, 'y':}, {'x':, 'y':}],
+            'p_id':-1,
+            'length': ,
+            'width':
+        }
+
+        :return:
+        self.GA :
+
         """
         if self.GA is None:
             bin_info_dic = copy.deepcopy(self.container)
-
-            """
-            # 首先它也是一个字典，key-value, key 分别有 points, p_id, width, height, 其实这里应该改成是length, width
-            # 这里需要修改一些，因为在比赛的时候，我们的bin的边距是为0的，并不是spaceing 5mm
-            # print("offset_bin_before = ", offset_bin)
-            # 在运行的时候把这一行注释掉运行看看，这个是边界没有考虑偏移量的版本
-            # offset_bin['points'] = self.polygon_offset(self.container['points'], self.config['spacing'])
-
-            # print("offset_bin_after = ", offset_bin)
-            
-            从这个结果可以看出，这个地方的polygon_offset 算法是有问题的 可以先不考虑offset来运行一遍，之后再修改，考虑
-            这个offset， 这个很明显就有错误！！！
-            
-            ('offset_bin_before = ', 
-            {'width': 20000, 'points': [{'y': 0, 'x': 0}, {'y': 1600, 'x': 0}, {'y': 1600, 'x': 20000}, {'y': 0, 'x': 20000}], 
-            'p_id': '-1', 'height': 1600})
-            ('polygon = ', [[0, 0], [0, 1600], [20000, 1600], [20000, 0]])
-            ('offset_bin_after = ', {'width': 20000, 'points': 
-
-            [{'y': -4, 'x': 20003}, {'y': 0, 'x': 20005}, {'y': 1600, 'x': 20005}, {'y': 1603, 'x': 20004}, 
-            {'y': 1605, 'x': 20000}, {'y': 1605, 'x': 0}, {'y': 1604, 'x': -3}, 
-            {'y': 1600, 'x': -5}, {'y': 0, 'x': -5}, {'y': -3, 'x': -4}, 
-            {'y': -5, 'x': 0}, {'y': -5, 'x': 20000}],
-             'p_id': '-1', 'height': 1600})
-            """
             self.GA = genetic_algorithm.genetic_algorithm(segments_sorted_list, bin_info_dic)
         else:
             self.GA.generation()
@@ -152,6 +173,96 @@ class Nester:
         """
         get fitness of an individual, a solution, a place order
         :param individual: a solution
+        self.individual =
+            {
+                'placement_order':
+                [
+                    [1, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+                    [2, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+                    ...
+                    [314, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+                ]
+                'rotation': [0, 0, ..., 0]
+            }
+        place_order_list =
+            [
+                [1, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+                [2, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+                ...
+                [314, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+            ]
+
+        combined_order_angle_list =
+            [
+                [1, {area: , p_id: , points:[{'x': , 'y': }...]}, 0],
+                [2, {area: , p_id: , points:[{'x': , 'y': }...]}, 0],
+                ...
+                [314, {area: , p_id: , points:[{'x': , 'y': }...]}, 0],
+            ]
+
+        key = {
+                'A': '-1',                                                         # -1 stand for the container
+                'B': segment_i[0],                                                 # 这个难不成是每一个解都要算一次吗？
+                'inside': True,
+                'A_rotation': 0,
+                'B_rotation': rotation_list[i]
+            }
+
+        key = {
+                    'A': placed_segment_j[0],
+                    'B': segment_i[0],
+                    'inside': False,
+                    'A_rotation': rotation_list[j],
+                    'B_rotation': rotation_list[i]
+                }
+
+        nfp_pairs =
+        [
+            {
+            'A': {
+                    'points':[{'x':, 'y': }, {'x':, 'y':}, {'x':, 'y':}, {'x':, 'y':}],
+                    'p_id':-1,
+                    'length': ,
+                    'width':
+                }
+
+            'B': {area: , p_id: , points:[{'x': , 'y': }...]}
+
+            'key': {
+                'A': '-1',                                                         # -1 stand for the container
+                'B': segment_i[0],                                                 # 这个难不成是每一个解都要算一次吗？,其实不用这么算的
+                'inside': True,
+                'A_rotation': 0,
+                'B_rotation': rotation_list[i]
+                }
+
+            },
+
+            ......
+
+        ]
+
+        nfp_pairs =
+        [
+        {
+            'A': {area: , p_id: , points:[{'x': , 'y': }...]},
+
+            'B': {area: , p_id: , points:[{'x': , 'y': }...]},
+
+            'key': {
+                    'A': placed_segment_j[0],
+                    'B': segment_i[0],
+                    'inside': False,
+                    'A_rotation': rotation_list[j],
+                    'B_rotation': rotation_list[i]
+                }
+        }
+        ......
+        ]
+
+
+
+        :return
         """
 
         place_order_list = copy.deepcopy(individual['placement_order'])
@@ -164,9 +275,7 @@ class Nester:
         
         combined_order_angle_list = copy.deepcopy(place_order_list)
 
-        nfp_pairs = list()
-        new_cache = dict()
-
+        nfp_pairs = list(); new_cache = dict()
         for i in range(0, len(combined_order_angle_list)):              # get IFR inner fit Rectangle
             segment_i = combined_order_angle_list[i]
             key = {
@@ -209,31 +318,91 @@ class Nester:
                 else:
                     new_cache[tmp_json_key] = self.nfp_cache[tmp_json_key]
 
-            # with open("中间结果.json", "a") as f:
-            #     f.write("new_cache" + str(new_cache))
-            #     f.write("nfp_pairs" + str(nfp_pairs))
-
-            # print("nfp_pairs = ", nfp_pairs)
-            # print("len(nfp_pairs)", len(nfp_pairs))
-            # print("new_cache = ", new_cache)
-
         self.nfp_cache = new_cache                                      # 每一轮,也就是对每一个解过后，更新一次nfp_cache
-        # with open("中间结果.json", "a") as f:
-        #     f.write("self.nfp_cache" + str(self.nfp_cache))
-
         self.worker = placement_worker.PlacementWorker(self.container, combined_order_angle_list, ids, rotation_list,
                                                        self.config, self.nfp_cache)
 
         pair_list = list()
         for pair in nfp_pairs:
             pair_list.append(self.process_nfp(pair))                    # 这个地方计算nfp_pair花了好久啊？;nfp_pair 有49455，这个也太多了吧? 时间最多了
-            with open("pair_list.json", "a") as f:
-                f.write("pair_list" + str(pair_list)+"\n")
         return self.generate_nfp(pair_list)
 
     def process_nfp(self, pair):
         """
-        计算所有图形两两组合的相切多边形（NFP）
+        compute to get no fit polygon of two segment
+
+        :param pair:
+        {
+            'A': {
+                    'points':[{'x':, 'y': }, {'x':, 'y':}, {'x':, 'y':}, {'x':, 'y':}],
+                    'p_id':-1,
+                    'length': ,
+                    'width':
+                }
+
+            'B': {area: , p_id: , points:[{'x': , 'y': }...]}
+
+            'key': {
+                'A': '-1',                                                         # -1 stand for the container
+                'B': segment_i[0],                                                 # 这个难不成是每一个解都要算一次吗？,其实不用这么算的
+                'inside': True,
+                'A_rotation': 0,
+                'B_rotation': rotation_list[i]
+                }
+        },
+
+        :param pair :
+
+        {
+            'A': {area: , p_id: , points:[{'x': , 'y': }...]},
+
+            'B': {area: , p_id: , points:[{'x': , 'y': }...]},
+
+            'key': {
+                    'A': placed_segment_j[0],
+                    'B': segment_i[0],
+                    'inside': False,
+                    'A_rotation': rotation_list[j],
+                    'B_rotation': rotation_list[i]
+                }
+        }
+
+        :return:
+        nfp_rectangle
+        nfp :
+        [[{'x': , 'y': },{'x': , 'y': },{'x': , 'y': },{'x': , 'y': }]]
+        nfp_polygon
+        nfp :
+        [[{'x': 'y': }...{'x':, 'y':}]]
+
+        :return:
+        {
+            'key': {
+                'A': '-1',                                                         # -1 stand for the container
+                'B': segment_i[0],                                                 # 这个难不成是每一个解都要算一次吗？,其实不用这么算的
+                'inside': True,
+                'A_rotation': 0,
+                'B_rotation': rotation_list[i]
+                }
+
+            'value': [[{'x': , 'y': },{'x': , 'y': },{'x': , 'y': },{'x': , 'y': }]]
+        }
+
+        {
+            'key': {
+                    'A': placed_segment_j[0],
+                    'B': segment_i[0],
+                    'inside': False,
+                    'A_rotation': rotation_list[j],
+                    'B_rotation': rotation_list[i]
+                }
+
+            'value': [[{'x': 'y': }...{'x':, 'y':}]]
+        }
+
+
+
+
         """
         if pair is None or len(pair) == 0:
             return None
@@ -247,7 +416,8 @@ class Nester:
         B = copy.deepcopy(pair['B'])
         B['points'] = nfp_utls.rotate_polygon(B['points'], pair['key']['B_rotation'])['points']             # 旋转后的B
 
-        if pair['key']['inside']:                                                                           # 内切多边形
+        if pair['key']['inside']:
+            # inner fit rectangle
             if nfp_utls.is_rectangle(A['points'], 0.0001):
                 nfp = nfp_utls.nfp_rectangle(A['points'], B['points'])
             else:
@@ -260,12 +430,15 @@ class Nester:
                         nfp[i].reverse()
             else:
                 pass
-                # print('NFP Warning:', pair['key'])
+                print('NFP Warning:', pair['key'])
 
         else:
-            if search_edges:                                                                                 # 外切多边形
+            # no fit polygon
+            if search_edges:
+                # 处理凹面
                 nfp = nfp_utls.nfp_polygon(A, B, False, search_edges)
             else:
+                # 使用Minkowski_difference和求两个零件的nfp
                 nfp = minkowski_difference(A, B)
 
             # 检查NFP多边形是否合理
@@ -312,8 +485,44 @@ class Nester:
     def generate_nfp(self, nfp_list):
         """
         计算图形的转移量和适应值
-        :param nfp_list: nfp多边形数据list
+        :param nfp_list:
+        [
+        {
+            'key': {
+                'A': '-1',                                                         # -1 stand for the container
+                'B': segment_i[0],                                                 # 这个难不成是每一个解都要算一次吗？,其实不用这么算的
+                'inside': True,
+                'A_rotation': 0,
+                'B_rotation': rotation_list[i]
+                }
+
+            'value': [[{'x': , 'y': },{'x': , 'y': },{'x': , 'y': },{'x': , 'y': }]]
+        }
+        ,
+
+        {
+            'key': {
+                    'A': placed_segment_j[0],
+                    'B': segment_i[0],
+                    'inside': False,
+                    'A_rotation': rotation_list[j],
+                    'B_rotation': rotation_list[i]
+                }
+
+            'value': [[{'x': 'y': }...{'x':, 'y':}]]
+        }
+
+        ]
+
         :return:
+        {
+            'placements': all_placements,
+            'fitness': fitness,
+            'paths': paths,
+            'area': bin_area,
+            'min_length':min_length
+        }
+
         """
         if nfp_list:
             for i in range(0, len(nfp_list)):
