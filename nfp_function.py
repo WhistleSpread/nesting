@@ -117,12 +117,14 @@ class Nester:
             segments_sorted_list.append([str(i), segment])
 
         segments_sorted_list = sorted(segments_sorted_list, reverse=True, key=lambda o_segment: o_segment[1]['area'])
+
         return self.launch_workers(segments_sorted_list)
 
     def launch_workers(self, segments_sorted_list):
         """
         call genetic method
         :param segments_sorted_list:
+        sorted in the order of area
         [
         [1, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
         [2, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
@@ -171,27 +173,27 @@ class Nester:
             {
                 'placement_order':
                 [
-                    [1, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
                     [2, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+                    [5, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
                     ...
-                    [314, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+                    [245, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
                 ]
                 'rotation': [0, 0, ..., 0]
             }
         place_order_list =
             [
-                [1, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
                 [2, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+                [5, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
                 ...
-                [314, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
+                [245, {area: , p_id: , points:[{'x': , 'y': }...{'x': 'y': }]}],
             ]
 
         combined_order_angle_list =
             [
-                [1, {area: , p_id: , points:[{'x': , 'y': }...]}, 0],
                 [2, {area: , p_id: , points:[{'x': , 'y': }...]}, 0],
+                [5, {area: , p_id: , points:[{'x': , 'y': }...]}, 0],
                 ...
-                [314, {area: , p_id: , points:[{'x': , 'y': }...]}, 0],
+                [245, {area: , p_id: , points:[{'x': , 'y': }...]}, 0],
             ]
 
         key = {
@@ -257,6 +259,15 @@ class Nester:
 
 
         :return
+        result_info_dic =
+        {
+            'placements': all_placements,
+            'fitness': fitness,
+            'paths': paths,
+            'area': bin_area,
+            'min_length':min_length
+        }
+
         """
 
         place_order_list = copy.deepcopy(individual['placement_order'])
@@ -274,7 +285,7 @@ class Nester:
             segment_i = combined_order_angle_list[i]
             key = {
                 'A': '-1',                                              # -1 stand for the container
-                'B': segment_i[0],                                      # segment_i[0] is the index of segment_i
+                'B': segment_i[0],                                      # segment_i[0] is the index of segment_i, 这个是每个一individual中的顺序啊？这个不太行
                 'inside': True,
                 'A_rotation': 0,
                 'B_rotation': rotation_list[i]
@@ -289,7 +300,7 @@ class Nester:
                     'key': key
                 })
             else:
-                new_cache[tmp_json_key] = self.nfp_cache[tmp_json_key]
+                new_cache[tmp_json_key] = self.nfp_cache[tmp_json_key]  # update new_cache
 
             for j in range(0, i):                                       # get nfp of seg_i and seg_j
                 placed_segment_j = combined_order_angle_list[j]
@@ -313,7 +324,9 @@ class Nester:
                     new_cache[tmp_json_key] = self.nfp_cache[tmp_json_key]
 
         self.nfp_cache = new_cache                                      # 每一轮,也就是对每一个解过后，更新一次nfp_cache
-        self.worker = placement_worker.PlacementWorker(self.container, combined_order_angle_list, ids, rotation_list,
+        self.worker = placement_worker.PlacementWorker(self.container,
+                                                       combined_order_angle_list,
+                                                       ids, rotation_list,
                                                        self.config, self.nfp_cache)
 
         pair_list = list()
@@ -394,12 +407,7 @@ class Nester:
             'value': [[{'x': 'y': }...{'x':, 'y':}]]
         }
 
-
-
-
         """
-        if pair is None or len(pair) == 0:
-            return None
 
         # 考虑有没有洞和凹面
         search_edges = self.config['exploreConcave']
@@ -529,35 +537,19 @@ class Nester:
 
     def polygon_offset(self, polygon, offset):
         """
-
         :param polygon:
         [{'x': , 'y': }...{'x': 'y': }]
         :param offset: 5
         :return:
         """
-
-        # is_list 是一个flag, 表示是不是一个列表, 不过这里设置这个flag有什么作用呢？
-
-        is_list = True
-        # 这个函数就是做一个转换，将本来list中是dict的形式转换成list中是小的2元list的形式
-        if isinstance(polygon[0], dict):
-            polygon = [[p['x'], p['y']] for p in polygon]
-            is_list = False
-
-        # print("polygon = ", polygon)
-
-        # 这里使用了库pyclipper的, 就是为了保证零件之间的距离为5，这个地方我没有看懂
-        # 因为这个pyclipper库没怎么看明白
+        polygon = [[p['x'], p['y']] for p in polygon]
 
         miter_limit = 2
         co = pyclipper.PyclipperOffset(miter_limit, self.config['curveTolerance'])
         co.AddPath(polygon, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
         result = co.Execute(1*offset)
-        # print("result = ", result)
 
-        # 这个操作就是把它变回去，从list变回到字典的情况中去；而且这个is_list 根本就没用嘛
-        if not is_list:
-            result = [{'x': p[0], 'y':p[1]} for p in result[0]]
+        result = [{'x': p[0], 'y':p[1]} for p in result[0]]
         return result
 
 

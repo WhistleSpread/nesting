@@ -12,8 +12,6 @@ def find_shape_from_file(file_name):
         record = data.ix[i,:]
         a = (json.loads(record['外轮廓']))
         all_shapes.append(a)
-    # print("all_shapes = ", all_shapes)
-
     return all_shapes
 
 

@@ -2,7 +2,7 @@
 import copy
 import random 
 from tools import nfp_utls
-from settings import ROTATIONS,POPULATION_SIZE, MUTA_RATE
+from settings import POPULATION_SIZE, MUTA_RATE
 
 
 class genetic_algorithm():
@@ -80,7 +80,6 @@ class genetic_algorithm():
         #         return 0
         #     return 180
 
-
         # 感觉这里到angle_list 就直接设置成[0, 180]就好了
 
         angle_list = [0, 180]
@@ -95,7 +94,6 @@ class genetic_algorithm():
 
     def mutate(self, individual):
         """
-
         :param individual:
         {
             'placement_order':
@@ -115,7 +113,7 @@ class genetic_algorithm():
             [3, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
             [8, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
             ...
-            [314, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
+            [264, {area: , p_id: , points:[{'x': , 'y': }]},... {area: , p_id: , points:[{'x': , 'y': }]}],
             ]
             'rotation': [0, 0, ..., 0]
         }
@@ -127,17 +125,20 @@ class genetic_algorithm():
         }
 
         for i in range(0, len(clone['placement_order'])):
-            if random.random() < self.mutationRate:              #如果产生的随机数小于设置的变异概率，那么就发生变异
+            if random.random() < self.mutationRate:
                 if i+1 < len(clone['placement_order']):
                     clone['placement_order'][i], clone['placement_order'][i+1] = clone['placement_order'][i+1], clone['placement_order'][i]
 
-            if random.random() < self.mutationRate:             # 如果产生的随机数要小于设置的变异概率，就随机变换角度
+            if random.random() < self.mutationRate:
                 clone['rotation'][i] = self.random_angle(clone['placement_order'][i], clone['rotation'][i])
 
         return clone
 
     def generation(self):
+        """
 
+        :return:
+        """
         # 适应度 从大到小排序
         # print("self.population = ", self.population)
         self.population = sorted(self.population, key=lambda a: a['fitness'])
@@ -159,6 +160,11 @@ class genetic_algorithm():
         self.population = new_population
 
     def random_weighted_individual(self, exclude=None):
+        """
+
+        :param exclude:
+        :return:
+        """
         pop = self.population
         if exclude and pop.index(exclude) >= 0:
             pop.remove(exclude)
@@ -176,6 +182,12 @@ class genetic_algorithm():
         return pop[0]
 
     def mate(self, male, female):
+        """
+
+        :param male:
+        :param female:
+        :return:
+        """
         cutpoint = random.randint(0, len(male['placement_order'])-1)
         gene1 = male['placement_order'][:cutpoint]
         rot1 = male['rotation'][:cutpoint]

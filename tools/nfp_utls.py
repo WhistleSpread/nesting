@@ -908,26 +908,36 @@ def polygon_area(polygon):
 
 def rotate_polygon(polygon, angle):
     """
-    将输入的多边形旋转相应的角度，返回的rotated是一个字典
-    包括左下角的点(x, y)，以及长度和宽度(length, width)，以及旋转后的点的坐标
-    注意！！！！
-    由于本次比赛的特殊性，每个零件的角度都是0到180度，所以，这里的计算可以简化，不需要调用三角函数
+
+    :param polygon:
+    [{'x':, 'y': }, {'x':, 'y':}, {'x':, 'y':}, {'x':, 'y':}]
+    :param angle:
+
+    :return: rotated
+    {
+        'points': list(),
+        'x' : ,
+        'y' : ,
+        'length' : ,
+        'width' : ,
+    }
+
     """
 
-    rotated = {'points': list()}
-    angle = angle * math.pi / 180
 
-    # 遍历这个多边形中的每一个点p
-    # 如果是0的话，旋转角度不变，如果是180度，那么就变成了(-x, -y)
-    # 所以这里在实现的时候，可以简化一个，这也是可以优化的，这里只是算了它的坐标
-    # 也就是说得到了它的形状，并没有得到它的具体的位置
-    for p in polygon:
-        x = p['x']
-        y = p['y']
-        rotated['points'].append({
-            'x': x * math.cos(angle) - y * math.sin(angle),
-            'y': x * math.sin(angle) + y * math.cos(angle)
-        })
+    rotated = {'points': list()}
+
+    for point in polygon:
+        x = point['x']
+        y = point['y']
+        if angle == 0:
+            rotated['points'].append({
+                'x': x , 'y': y
+            })
+        else:
+            rotated['points'].append({
+                'x': -x, 'y': -y
+            })
 
     bounds = get_polygon_bounds(rotated['points'])
     rotated['x'] = bounds['x']
@@ -937,32 +947,60 @@ def rotate_polygon(polygon, angle):
     return rotated
 
 
+
+
+    # rotated = {'points': list()}
+    # angle = angle * math.pi / 180
+    #
+    # # 遍历这个多边形中的每一个点p
+    # # 如果是0的话，旋转角度不变，如果是180度，那么就变成了(-x, -y)
+    # # 所以这里在实现的时候，可以简化一个，这也是可以优化的，这里只是算了它的坐标
+    # # 也就是说得到了它的形状，并没有得到它的具体的位置
+    # for p in polygon:
+    #     x = p['x']
+    #     y = p['y']
+    #     rotated['points'].append({
+    #         'x': x * math.cos(angle) - y * math.sin(angle),
+    #         'y': x * math.sin(angle) + y * math.cos(angle)
+    #     })
+    #
+    # bounds = get_polygon_bounds(rotated['points'])
+    # rotated['x'] = bounds['x']
+    # rotated['y'] = bounds['y']
+    # rotated['length'] = bounds['length']
+    # rotated['width'] = bounds['width']
+    # return rotated
+
+
 def get_polygon_bounds(polygon):
     """
-    返回左下角的点(x, y)，以及长度和宽度(length, width)
-    
+
+    :param polygon: [{'x':, 'y': }, {'x':, 'y':}, {'x':, 'y':}, {'x':, 'y':}]
+
+    :return: 返回左下角的点(x, y)，以及长度和宽度(length, width)
     """
+
     if polygon is None or len(polygon) < 3:
         return None
 
-    xmax = polygon[0]['x']
-    xmin = polygon[0]['x']
-    ymax = polygon[0]['y']
-    ymin = polygon[0]['y']
+    x_max = polygon[0]['x']
+    x_min = polygon[0]['x']
+    y_max = polygon[0]['y']
+    y_min = polygon[0]['y']
 
     for point in polygon:
-        if point['x'] > xmax:
-            xmax = point['x']
-        elif point['x'] < xmin:
-            xmin = point['x']
-        if point['y'] > ymax:
-            ymax = point['y']
-        elif point['y'] < ymin:
-            ymin = point['y']
+        if point['x'] > x_max:
+            x_max = point['x']
+        elif point['x'] < x_min:
+            x_min = point['x']
+        if point['y'] > y_max:
+            y_max = point['y']
+        elif point['y'] < y_min:
+            y_min = point['y']
         
     return {
-        'x': xmin,
-        'y': ymin,
-        'length': xmax - xmin,
-        'width': ymax - ymin
+        'x': x_min,
+        'y': y_min,
+        'length': x_max - x_min,
+        'width': y_max - y_min
     }
