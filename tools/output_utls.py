@@ -23,7 +23,7 @@ def makedir():
 def output_csv(filepath, filename, to_csv_list):
     with open(filepath + filename + ".csv", "w", encoding='utf-8-sig', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["下料批次号", "零件名", "面料号", "零件外轮廓线坐标"])
+        writer.writerow(["下料批次号", "零件号", "面料号", "零件外轮廓线坐标"])
         for item in to_csv_list:
             a = list()
             for point in item[1].contour(0):
