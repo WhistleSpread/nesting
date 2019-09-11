@@ -23,12 +23,13 @@ if __name__ == '__main__':
 
     filepath1 = "./data/L0002_lingjian.csv"
     filepath2 = "./data/L0003_lingjian.csv"
-    filepath3 = "./data/test3.csv"
+    filepath3 = "./data/test2.csv"
     filepath4 = "./data/test3.csv"
 
     start = time.time()
-    nesting(filepath3, "L0002")
-    nesting(filepath4, "L0003")
+    # nesting(filepath1, "L0002")
+    # nesting(filepath2, "L0003")
+    nesting(filepath3, "test2")
     end = time.time()
 
     print('Running time: %s Seconds' % (end - start))

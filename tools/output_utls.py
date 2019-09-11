@@ -21,7 +21,7 @@ def makedir():
 
 
 def output_csv(filepath, filename, to_csv_list):
-    with open(filepath + filename + ".csv", "w", encoding='utf-8-sig') as csvfile:
+    with open(filepath + filename + ".csv", "w", encoding='utf-8-sig', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["下料批次号", "零件名", "面料号", "零件外轮廓线坐标"])
         for item in to_csv_list:
@@ -29,9 +29,9 @@ def output_csv(filepath, filename, to_csv_list):
             for point in item[1].contour(0):
                 t = list(point)
                 a.append(t)
-            if item[0] <= 10:
+            if item[0] + 1 < 10:
                 seg_num = "s00000" + str(item[0] + 1)
-            elif item[0] <= 100:
+            elif item[0] + 1 < 100:
                 seg_num = "s0000" + str(item[0] + 1)
             else:
                 seg_num = "s000" + str(item[0] + 1)
