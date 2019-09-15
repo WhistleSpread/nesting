@@ -7,14 +7,14 @@ import time
 
 def nesting(filepath, result_file_name):
 
-    n = Nester()
     shapes = input_utls.input_polygon(filepath)
+
+    n = Nester()
     n.set_segments(shapes)
     n.set_container(BIN_NORMAL)
-
     n.run()
-    result = n.best
 
+    result = n.best
     output_utls.output_result(result['placements'], n.shapes, n.container, n.container_bounds,
                           result['min_length'], result_file_name)
 
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     start = time.time()
     # nesting(filepath1, "L0002")
     # nesting(filepath2, "L0003")
-    nesting(filepath3, "test2")
+    nesting(filepath3, "L0002")
     end = time.time()
 
     print('Running time: %s Seconds' % (end - start))

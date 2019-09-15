@@ -111,7 +111,7 @@ class Nester:
             return
 
         segments_sorted_list = list()
-        for i in range(0, len(self.shapes)):                # 这里修改一下，从1开始比较好
+        for i in range(0, len(self.shapes)):
             segment = copy.deepcopy(self.shapes[i])
             segment['points'] = self.polygon_offset(segment['points'], self.config['spacing'])
             segments_sorted_list.append([str(i), segment])
@@ -409,79 +409,26 @@ class Nester:
 
         """
 
-        # 考虑有没有洞和凹面
-        search_edges = self.config['exploreConcave']
-        use_holes = self.config['useHoles']
-
         A = copy.deepcopy(pair['A'])
         A['points'] = nfp_utls.rotate_polygon(A['points'], pair['key']['A_rotation'])['points']             # 旋转后的A
         B = copy.deepcopy(pair['B'])
         B['points'] = nfp_utls.rotate_polygon(B['points'], pair['key']['B_rotation'])['points']             # 旋转后的B
 
         if pair['key']['inside']:
-            # inner fit rectangle
-            if nfp_utls.is_rectangle(A['points'], 0.0001):
-                nfp = nfp_utls.nfp_rectangle(A['points'], B['points'])
-            else:
-                nfp = nfp_utls.nfp_polygon(A, B, True, search_edges)
+            nfp = nfp_utls.nfp_rectangle(A['points'], B['points'])
+            # 这个生成的nfp 是一个二层的list why ? [[{'x': , 'y': }, {}, ..., {}]]
 
-            # ensure all interior NFPs have the same winding direction
-            if nfp and len(nfp) > 0:
-                for i in range(0, len(nfp)):
-                    if nfp_utls.polygon_area(nfp[i]) > 0:
-                        nfp[i].reverse()
-            else:
-                pass
-                print('NFP Warning:', pair['key'])
+            if nfp_utls.polygon_area(nfp) > 0:
+                nfp.reverse()
 
         else:
-            # no fit polygon
-            if search_edges:
-                # 处理凹面
-                nfp = nfp_utls.nfp_polygon(A, B, False, search_edges)
-            else:
-                # 使用Minkowski_difference和求两个零件的nfp
-                nfp = minkowski_difference(A, B)
+            # pair['key']['inside'] == False , so compute no fit polygon between two segments
 
-            # 检查NFP多边形是否合理
-            if nfp is None or len(nfp) == 0:
-                pass
-                # print('error in NFP 260')
-                # print('NFP Error:', pair['key'])
-                # print('A;', A)
-                # print('B:', B)
-                return None
+            nfp = minkowski_difference(A, B)                        # 使用 Minkowski_difference和求两个零件的nfp, 考虑用lib
 
-            for i in range(0, len(nfp)):
-                # if search edges is active, only the first NFP is guaranteed to pass sanity check
-                if not search_edges or i == 0:
-                    if abs(nfp_utls.polygon_area(nfp[i])) < abs(nfp_utls.polygon_area(A['points'])):
-                        pass
-                        # print('error in NFP area 269')
-                        # print('NFP Area Error: ', abs(nfp_utls.polygon_area(nfp[i])), pair['key'])
-                        # print('NFP:', json.dumps(nfp[i]))
-                        # print('A: ', A)
-                        # print('B: ', B)
-                        nfp.pop(i)
-                        return None
+            if nfp_utls.polygon_area(nfp) > 0:
+                nfp.reverse()
 
-            if len(nfp) == 0:
-                return None
-            # for outer NFPs, the first is guaranteed to be the largest.
-            # Any subsequent NFPs that lie inside the first are hole
-            for i in range(0, len(nfp)):
-                if nfp_utls.polygon_area(nfp[i]) > 0:
-                    nfp[i].reverse()
-
-                if i > 0:
-                    if nfp_utls.point_in_polygon(nfp[i][0], nfp[0]):
-                        if nfp_utls.polygon_area(nfp[i]) < 0:
-                            nfp[i].reverse()
-
-            # generate nfps for children (holes of parts) if any exist
-            # 有洞的暂时不管
-            if use_holes and len(A) > 0:
-                pass
         return {'key': pair['key'], 'value': nfp}
 
     def generate_nfp(self, nfp_list):
@@ -526,11 +473,9 @@ class Nester:
         }
 
         """
-        if nfp_list:
-            for i in range(0, len(nfp_list)):
-                if nfp_list[i]:
-                    key = json.dumps(nfp_list[i]['key'])
-                    self.nfp_cache[key] = nfp_list[i]['value']                   # 在这里不同的key对应不同的nfp多边形value
+        for i in range(0, len(nfp_list)):
+            key = json.dumps(nfp_list[i]['key'])
+            self.nfp_cache[key] = nfp_list[i]['value']                   # 在这里不同的key对应不同的nfp多边形value
 
         self.worker.nfpCache = copy.deepcopy(self.nfp_cache)
         return self.worker.place_paths()
@@ -577,7 +522,7 @@ def minkowski_difference(A, B):
                     'x': clipper_nfp[i]['x'] + Bc[0][0] * -1,
                     'y':clipper_nfp[i]['y'] + Bc[0][1] * -1
                    } for i in range(0, len(clipper_nfp))]
-    return [clipper_nfp]
+    return clipper_nfp
 
 
 

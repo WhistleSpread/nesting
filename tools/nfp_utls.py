@@ -116,12 +116,19 @@ def nfp_rectangle(A, B):
     if max_by - min_by > max_ay - min_ay:
         return None
 
-    return [[
-        {'x': min_ax-min_bx+B[0]['x'], 'y': min_ay-min_by+B[0]['y']},
-        {'x': max_ax-max_bx+B[0]['x'], 'y': min_ay-min_by+B[0]['y']},
-        {'x': max_ax-max_bx+B[0]['x'], 'y': max_ay-max_by+B[0]['y']},
-        {'x': min_ax-min_bx+B[0]['x'], 'y': max_ay-max_by+B[0]['y']}
-    ]]
+    return [
+        {'x': min_ax - min_bx + B[0]['x'], 'y': min_ay - min_by + B[0]['y']},
+        {'x': max_ax - max_bx + B[0]['x'], 'y': min_ay - min_by + B[0]['y']},
+        {'x': max_ax - max_bx + B[0]['x'], 'y': max_ay - max_by + B[0]['y']},
+        {'x': min_ax - min_bx + B[0]['x'], 'y': max_ay - max_by + B[0]['y']}
+    ]
+
+    # return [[
+    #     {'x': min_ax-min_bx+B[0]['x'], 'y': min_ay-min_by+B[0]['y']},
+    #     {'x': max_ax-max_bx+B[0]['x'], 'y': min_ay-min_by+B[0]['y']},
+    #     {'x': max_ax-max_bx+B[0]['x'], 'y': max_ay-max_by+B[0]['y']},
+    #     {'x': min_ax-min_bx+B[0]['x'], 'y': max_ay-max_by+B[0]['y']}
+    # ]]
 
 
 def nfp_polygon(A, B, inside=True, search_edges=False):
@@ -923,7 +930,6 @@ def rotate_polygon(polygon, angle):
     }
 
     """
-
 
     rotated = {'points': list()}
 

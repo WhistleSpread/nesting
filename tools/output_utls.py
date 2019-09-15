@@ -21,6 +21,15 @@ def makedir():
 
 
 def output_csv(filepath, filename, to_csv_list):
+
+    if filename == "L0002":
+        fabric_num = 1
+    elif filename == "L0003":
+        fabric_num = "M0003"
+    else:
+        print("fabric num error!")
+        return
+
     with open(filepath + filename + ".csv", "w", encoding='utf-8-sig', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["下料批次号", "零件号", "面料号", "零件外轮廓线坐标"])
@@ -35,7 +44,7 @@ def output_csv(filepath, filename, to_csv_list):
                 seg_num = "s0000" + str(item[0] + 1)
             else:
                 seg_num = "s000" + str(item[0] + 1)
-            writer.writerow(["L0003", seg_num, "M0003", a])
+            writer.writerow([filename, seg_num, fabric_num, a])
 
 
 def output_png(solution, rates, bin_bounds, bin_shape, filename):
