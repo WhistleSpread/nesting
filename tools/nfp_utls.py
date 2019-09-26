@@ -131,7 +131,7 @@ def nfp_rectangle(A, B):
     # ]]
 
 
-def nfp_polygon(A, B, inside=True, search_edges=False):
+def nfp_polygon(A, B, inside=False, search_edges=False):
     """
     given a static polygon A and a movable polygon B, compute a no fit polygon by orbiting B about A
     if the inside flag is set, B is orbited inside of A rather than outside
@@ -372,7 +372,7 @@ def nfp_polygon(A, B, inside=True, search_edges=False):
 
         start_point = search_start_point(A, B, inside, NFP_list)
 
-    return NFP_list
+    return NFP_list[0]
 
 
 def search_start_point(A, B, inside=True, NFP=None):
@@ -951,8 +951,6 @@ def rotate_polygon(polygon, angle):
     rotated['length'] = bounds['length']
     rotated['width'] = bounds['width']
     return rotated
-
-
 
 
     # rotated = {'points': list()}

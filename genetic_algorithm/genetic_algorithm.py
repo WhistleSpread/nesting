@@ -7,7 +7,7 @@ from settings import POPULATION_SIZE, MUTA_RATE
 
 class genetic_algorithm():
 
-    def __init__(self, segments_sorted_list, bin_info_dic):
+    def __init__(self, segments_sorted_list, container):
         """
         :param segments_sorted_list:
             [
@@ -41,7 +41,7 @@ class genetic_algorithm():
 
         self.populationSize = POPULATION_SIZE
         self.mutationRate = MUTA_RATE
-        self.bin_info_dic = bin_info_dic
+        self.container = container
 
         placement_order = copy.deepcopy(segments_sorted_list)
         angles = [0]*len(placement_order)
@@ -60,37 +60,22 @@ class genetic_algorithm():
         :return: angle or random_angle one of (0, 180)
         """
 
-
-        # 为什么用这种算法最后有的零件不显示出来呢？奇怪？
-        # 这个函数改了后，算法的收敛性慢了好多；
-
-        # def valid_rotate(shape, angle):
-        #     rotate_part = nfp_utls.rotate_polygon(shape[1]['points'], angle)
-        #     if rotate_part['length'] < self.bin_info_dic['length'] and rotate_part['width'] < self.bin_info_dic['width']:
-        #         return True
-        #     else:
-        #         return False
-
-        # if angle == 0:
-        #     if valid_rotate(shape, 180):
-        #         return 180
-        #     return 0
-        # else:
-        #     if valid_rotate(shape, 0):
-        #         return 0
-        #     return 180
-
-        # 感觉这里到angle_list 就直接设置成[0, 180]就好了
-
-        angle_list = [0, 180]
-        # 查看选择后图形是否能放置在里面
-        for angle in angle_list:
-            # rotate_polygon 就是用来旋转多边形, 传入到是多边形到点到坐标，以及角度angle
+        def valid_rotate(shape, angle):
             rotate_part = nfp_utls.rotate_polygon(shape[1]['points'], angle)
-            # 是否判断旋转出界,没有出界可以返回旋转角度,rotate 只是尝试去转，没有真正改变图形坐标
-            if rotate_part['length'] < self.bin_info_dic['length'] and rotate_part['width'] < self.bin_info_dic['width']:
-                return angle
-        return 0
+            if rotate_part['x'] < self.container['length'] and rotate_part['y'] < self.container['width']:
+                return True
+            else:
+                return False
+
+        if angle == 0:
+            if valid_rotate(shape, 180):
+                print("rotated")
+                return 180
+            return 0
+        else:
+            if valid_rotate(shape, 0):
+                return 0
+            return 180
 
     def mutate(self, individual):
         """
@@ -130,6 +115,7 @@ class genetic_algorithm():
                     clone['placement_order'][i], clone['placement_order'][i+1] = clone['placement_order'][i+1], clone['placement_order'][i]
 
             if random.random() < self.mutationRate:
+                print("rotate,rotate")
                 clone['rotation'][i] = self.random_angle(clone['placement_order'][i], clone['rotation'][i])
 
         return clone
@@ -212,3 +198,8 @@ class genetic_algorithm():
                 rot2.append(male['rotation'][i])
 
         return [{'placement_order': gene1, 'rotation': rot1}, {'placement_order': gene2, 'rotation': rot2}]
+
+
+
+
+
