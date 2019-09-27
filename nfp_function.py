@@ -2,11 +2,9 @@
 
 from genetic_algorithm import genetic_algorithm
 from tools import nfp_utls
-
 from settings import SPACING, ROTATIONS, POPULATION_SIZE, MUTA_RATE, CURVETOLERANCE, BIN_LENGTH, BIN_WIDTH
 import json
 from tools.nfp_utls import almost_equal, rotate_polygon, get_polygon_bounds, polygon_area
-import copy
 import pyclipper
 
 
@@ -86,14 +84,14 @@ class Nester:
     def run(self):
         segments_sorted_list = list()
         for i in range(0, len(self.shapes)):
-            segment = copy.deepcopy(self.shapes[i])
+            segment = self.shapes[i]
             segment['points'] = polygon_offset(segment['points'], self.config['spacing'], CURVETOLERANCE)
             segments_sorted_list.append([str(i), segment])
 
         segments_sorted_list = sorted(segments_sorted_list, reverse=True, key=lambda o_segment: o_segment[1]['area'])
 
         if self.GA is None:
-            container = copy.deepcopy(self.container)
+            container = self.container
             self.GA = genetic_algorithm.genetic_algorithm(segments_sorted_list, container)
         else:
             self.GA.generation()
@@ -120,13 +118,13 @@ class Nester:
         :return:
         """
 
-        place_order_list = copy.deepcopy(individual['placement_order'])
-        rotation_list = copy.deepcopy(individual['rotation'])
+        place_order_list = individual['placement_order']
+        rotation_list = individual['rotation']
 
         for i in range(0, len(place_order_list)):
             place_order_list[i].append(rotation_list[i])
 
-        solution = copy.deepcopy(place_order_list)
+        solution = place_order_list
 
         nfp_pairs = list(); new_cache = dict()
 
@@ -179,7 +177,7 @@ class Nester:
             key = json.dumps(nfp['key'])
             self.nfp_cache[key] = nfp['value']
 
-        nfp_cache = copy.deepcopy(self.nfp_cache)
+        nfp_cache = self.nfp_cache
         result = self.place_paths(solution, nfp_cache)
 
         return result
@@ -362,9 +360,10 @@ def generate_nfp(nfp_paris):
     nfp_list = list()
 
     for pair in nfp_paris:
-        poly_a = copy.deepcopy(pair['A'])
+        poly_a = pair['A']
+
         poly_a['points'] = nfp_utls.rotate_polygon(poly_a['points'], pair['key']['A_rotation'])['points']
-        poly_b = copy.deepcopy(pair['B'])
+        poly_b = pair['B']
         poly_b['points'] = nfp_utls.rotate_polygon(poly_b['points'], pair['key']['B_rotation'])['points']
 
         if pair['key']['inside']:
@@ -398,7 +397,6 @@ def minkowski_difference(A, B):
     Bc = [[p['x'] * -1, p['y'] * -1] for p in B['points']]
 
     solution = pyclipper.MinkowskiSum(Ac, Bc, True)
-    # print("len(solution) = ", len(solution))
     largest_area = None
     clipper_nfp = None
 
@@ -414,7 +412,5 @@ def minkowski_difference(A, B):
                     'y':clipper_nfp[i]['y'] + Bc[0][1] * -1
                    } for i in range(0, len(clipper_nfp))]
     return clipper_nfp
-
-
 
 

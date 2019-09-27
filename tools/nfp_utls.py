@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import copy
 import math
 
 TOL = 0.0000001   # 计算过程中误差忽略值
@@ -385,10 +384,6 @@ def search_start_point(A, B, inside=True, NFP=None):
     :param NFP:
     :return:
     """
-    # clone arrays
-    A = copy.deepcopy(A)
-    B = copy.deepcopy(B)
-
     for i in range(0, len(A['points'])-1):
         if not A['points'][i].get('marked'):
             A['points'][i]['marked'] = True
@@ -523,8 +518,6 @@ def intersect(A, B):
     b_offsetx = B['offsetx'] or 0
     b_offsety = B['offsety'] or 0
 
-    A = copy.deepcopy(A)
-    B = copy.deepcopy(B)
     len_a = len(A['points'])
     len_b = len(B['points'])
     for i in range(0, len_a - 1):
@@ -664,9 +657,6 @@ def polygon_projection_distance(A, B, direction):
     a_offsetx = A.get('offsetx') or 0
     a_offsety = A.get('offsety') or 0
 
-    A = copy.deepcopy(A)
-    B = copy.deepcopy(B)
-
     edge_a = A['points']
     edge_b = B['points']
     distance = None
@@ -734,9 +724,6 @@ def polygon_slide_distance(A, B, direction, ignorenegative):
     b_offsety = B.get('offsety') or 0
     a_offsetx = A.get('offsetx') or 0
     a_offsety = A.get('offsety') or 0
-
-    A = copy.deepcopy(A)
-    B = copy.deepcopy(B)
 
     if not A['points'][-1] == A['points'][0]:
         A['points'].append(A['points'][0])
