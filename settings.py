@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-POPULATION_SIZE = 1   # 种群中的个体数目
+POPULATION_SIZE = 10   # 种群中的个体数目
 # NUATATION = 0
 MUTA_RATE = 0.2         # 变异概率
 ROTATIONS = 1           # 旋转选择， 1： 不能旋转
@@ -18,5 +18,8 @@ BIN_LENGTH = 20000
 BIN_WIDTH = 1600
 BIN_NORMAL = [[0, 0], [0, BIN_WIDTH], [BIN_LENGTH, BIN_WIDTH], [BIN_LENGTH, 0]]
 
+
+patch_51 = [[1000.0, 1200.0], 50.0]
+patch_52 = [[2000.0, 400.0], 80.0]
 
 

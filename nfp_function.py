@@ -6,10 +6,11 @@ from settings import SPACING, ROTATIONS, POPULATION_SIZE, MUTA_RATE, CURVETOLERA
 import json
 from tools.nfp_utls import almost_equal, rotate_polygon, get_polygon_bounds, polygon_area
 import pyclipper
+import copy
 
 
 class Nester:
-    def __init__(self, container=None, shapes=None):
+    def __init__(self, container=None, shapes=None, generation_num=1):
 
         self.container = container
         self.shapes = shapes
@@ -22,8 +23,10 @@ class Nester:
             'populationSize': POPULATION_SIZE,          # 基因群数量
             'mutationRate': MUTA_RATE,                  # 变异概率
         }
-        self.GA = None       
-        self.best = None  
+        self.GA = None
+        self.generation = generation_num
+        self.best = None
+        self.solution = None
 
     def set_segments(self, segments_lists):
         """
@@ -37,6 +40,14 @@ class Nester:
         self.shapes = []
         p_id = 1; total_area = 0
 
+        # patch1 = [[200, 0], [400, 0], [400, 200], [200, 200]]
+        # patch2 = [[100, 1000], [300, 1000], [300, 2000], [100, 2000]]
+
+        patch1 = [[950, 1150], [1050, 1150], [1050, 1250], [950, 1250]]
+        patch2 = [[1920, 320], [2080, 320], [2080, 480], [1920, 480]]
+
+        patches = [patch1, patch2]
+
         for segment_cord in segments_lists:
             shape = {'area': 0, 'p_id': str(p_id), 'points': [{'x': p[0], 'y': p[1]} for p in segment_cord]}
             p_id = p_id + 1
@@ -48,6 +59,18 @@ class Nester:
             shape['area'] = abs(seg_area)
             total_area += shape['area']
             self.shapes.append(shape)
+
+        for patch in patches:
+            shape = {'area': 0, 'p_id': str(p_id), 'points': [{'x': p[0], 'y': p[1]} for p in patch]}
+            p_id = p_id + 1
+            seg_area = nfp_utls.polygon_area(shape['points'])
+            if seg_area > 0:
+                shape['points'].reverse()
+
+            shape['area'] = abs(seg_area)
+            total_area += shape['area']
+            self.shapes.append(shape)
+
 
         self.total_segments_area = total_area
 
@@ -81,6 +104,11 @@ class Nester:
         self.container['length'] = a['length']
         self.container['width'] = a['width']
 
+    def set_patches(self):
+        pass
+
+
+
     def run(self):
         segments_sorted_list = list()
         for i in range(0, len(self.shapes)):
@@ -88,28 +116,78 @@ class Nester:
             segment['points'] = polygon_offset(segment['points'], self.config['spacing'], CURVETOLERANCE)
             segments_sorted_list.append([str(i), segment])
 
-        segments_sorted_list = sorted(segments_sorted_list, reverse=True, key=lambda o_segment: o_segment[1]['area'])
+        patches = segments_sorted_list[-2:]
+        print("patches = ", patches)
 
-        if self.GA is None:
-            container = self.container
-            self.GA = genetic_algorithm.genetic_algorithm(segments_sorted_list, container)
-        else:
-            self.GA.generation()
+        segments_sorted_list = sorted(segments_sorted_list[:-2], reverse=True, key=lambda o_segment: o_segment[1]['area'])
 
-        for i in range(0, self.GA.populationSize):
-            result_info_dic = self.find_fitness(self.GA.population[i])
-            self.GA.population[i]['fitness'] = result_info_dic['fitness']
-            self.results.append(result_info_dic)
+        segments_sorted_list = patches + segments_sorted_list
 
-        if len(self.results) > 0:
-            best_result = self.results[0]
 
-            for p in self.results:
-                if p['fitness'] > best_result['fitness']:
-                    best_result = p
 
-            if self.best is None or best_result['fitness'] > self.best['fitness']:
-                self.best = best_result
+
+
+        ####################################################################################
+
+        # generation = 0
+        # if self.GA is None:
+        #     container = self.container
+        #     self.GA = genetic_algorithm.genetic_algorithm(segments_sorted_list, container)
+        # else:
+        #     while generation < self.generation:
+        #         self.GA.generation()
+        #         generation = generation + 1
+        #         print("generation = ", generation)
+
+        ####################################################################################
+
+        generation = 0
+        while generation < self.generation:
+            if self.GA is None:
+                container = self.container
+                self.GA = genetic_algorithm.genetic_algorithm(segments_sorted_list, container)
+            else:
+                # for i in range(0, self.GA.populationSize):
+                #     result_info_dic = self.find_fitness(self.GA.population[i])
+                #     self.GA.population[i]['fitness'] = result_info_dic['fitness']
+
+                for i in range(0, self.GA.populationSize):
+                    result_info_dic = self.find_fitness(self.GA.population[i])
+                    self.GA.population[i]['fitness'] = result_info_dic['fitness']
+                    self.results.append(result_info_dic)
+
+                if len(self.results) > 0:
+                    best_result = self.results[0]
+
+                    for p in self.results:
+                        if p['fitness'] > best_result['fitness']:
+                            best_result = p
+
+                    if self.best is None or best_result['fitness'] > self.best['fitness']:
+                        self.best = best_result
+
+                self.GA.generation()
+
+                generation = generation + 1
+                print("generation = ", generation)
+                print("self.best.fitness = ", self.best['fitness'])
+
+        ####################################################################################
+
+        # for i in range(0, self.GA.populationSize):
+        #     result_info_dic = self.find_fitness(self.GA.population[i])
+        #     self.GA.population[i]['fitness'] = result_info_dic['fitness']
+        #     self.results.append(result_info_dic)
+        #
+        # if len(self.results) > 0:
+        #     best_result = self.results[0]
+        #
+        #     for p in self.results:
+        #         if p['fitness'] > best_result['fitness']:
+        #             best_result = p
+        #
+        #     if self.best is None or best_result['fitness'] > self.best['fitness']:
+        #         self.best = best_result
 
     def find_fitness(self, individual):
         """
@@ -118,8 +196,8 @@ class Nester:
         :return:
         """
 
-        place_order_list = individual['placement_order']
-        rotation_list = individual['rotation']
+        place_order_list = copy.deepcopy(individual['placement_order'])
+        rotation_list = copy.deepcopy(individual['rotation'])
 
         for i in range(0, len(place_order_list)):
             place_order_list[i].append(rotation_list[i])
@@ -189,6 +267,8 @@ class Nester:
         :param nfp_cache:
         :return:
         """
+        self.solution = solution
+
         paths = list()
         for combined_segment in solution:
             order = combined_segment[0]
@@ -200,12 +280,18 @@ class Nester:
             r['order'] = order
             paths.append(r)
 
+        a = list()
+        for i in paths:
+            a.append(i['rotation'])
+        print("angle = ", a)
+
+
         fitness = 0; min_length = None
 
         placed_segment_list = list()  # 存放已经放置了的零件
-        placements = list()
-
+        movements_list = list()
         for segment in paths:
+
             key = json.dumps({
                 'A': '-1',
                 'B': segment['order'],
@@ -215,24 +301,48 @@ class Nester:
             })
 
             inner_fit_rectangle = nfp_cache.get(key)
+            # position = None
 
-            position = None
-            if len(placed_segment_list) == 0:  # 最开始，没有放零件
+            movement = None
+
+            ####################################################################################
+
+            # if len(placed_segment_list) == 0:  # 最开始，没有放零件
+            #     for point in inner_fit_rectangle:
+            #         if movement is None or (point['x'] - segment['points'][0]['x'] < movement['x']):
+            #             # 零件做下角的坐标加上这个position 就是ifp左下角的坐标
+            #             movement = {
+            #                 'x': point['x'] - segment['points'][0]['x'],
+            #                 'y': point['y'] - segment['points'][0]['y'],
+            #                 'p_id': segment['order'],
+            #                 'rotation': segment['rotation']
+            #             }
+            #
+            #     movements_list.append(movement)
+            #     placed_segment_list.append(segment)
+            #
+            #     continue
+
+            ####################################################################################
+
+            ####################################################################################
+
+            if len(placed_segment_list) < 2:
                 for point in inner_fit_rectangle:
-                    if position is None or (point['x'] - segment['points'][0]['x'] < position['x']):
-                        position = {
-                            'x': point['x'] - segment['points'][0]['x'],
-                            'y': point['y'] - segment['points'][0]['y'],
+                    if movement is None or (point['x'] - segment['points'][0]['x'] < movement['x']):
+                        # 零件做下角的坐标加上这个position 就是ifp左下角的坐标
+                        movement = {
+                            'x': 0,
+                            'y': 0,
                             'p_id': segment['order'],
                             'rotation': segment['rotation']
                         }
 
-                placements.append(position)
+                movements_list.append(movement)
                 placed_segment_list.append(segment)
-                print("placements = ", placements)
-                print("placed_segment_list = ", placed_segment_list)
-                print("position = ", position)
+
                 continue
+            ####################################################################################
 
             clipper_bin_nfp = list()
             clipper_bin_nfp.append([[p['x'], p['y']] for p in inner_fit_rectangle])
@@ -255,14 +365,15 @@ class Nester:
 
                 nfp = nfp_cache.get(key)
 
-                clone = [[point['x'] + placements[j]['x'], point['y'] + placements[j]['y']] for point in nfp]
-                clone = pyclipper.CleanPolygon(clone)
+                moved_nfp_bl = [[point['x'] + movements_list[j]['x'], point['y'] + movements_list[j]['y']] for point in nfp]
+                moved_nfp_bl = pyclipper.CleanPolygon(moved_nfp_bl)
                 j = j + 1
 
-                if len(clone) > 2:
-                    clipper.AddPath(clone, pyclipper.PT_SUBJECT, True)
+                if len(moved_nfp_bl) > 2:
+                    clipper.AddPath(moved_nfp_bl, pyclipper.PT_SUBJECT, True)
 
             combine_nfp = clipper.Execute(pyclipper.CT_UNION, pyclipper.PFT_NONZERO, pyclipper.PFT_NONZERO)
+
             clipper = pyclipper.Pyclipper()
             clipper.AddPaths(combine_nfp, pyclipper.PT_CLIP, True)
             clipper.AddPaths(clipper_bin_nfp, pyclipper.PT_SUBJECT, True)
@@ -276,23 +387,27 @@ class Nester:
             if len(final_nfp) == 0:
                 continue
 
-            a = list()
+            candidate_bl_position = list()
+
+            # a = list()
             for polygon in final_nfp:
                 for p in polygon:
-                    a.append({'x': p[0], 'y': p[1]})
+                    # 将所有可能放置的点都存放在一个list里面，这些点就是candidate position
+                    candidate_bl_position.append({'x': p[0], 'y': p[1]})
+                    # a.append({'x': p[0], 'y': p[1]})
 
-            final_nfp = a
             min_length = None; min_area = None;
             min_x = None
 
-            for p_nf in final_nfp:
+            for p_nf in candidate_bl_position:
                 all_points = list()
 
                 for m in range(0, len(placed_segment_list)):
+
                     for p in placed_segment_list[m]['points']:
                         all_points.append({
-                            'x': p['x'] + placements[m]['x'],
-                            'y': p['y'] + placements[m]['y']
+                            'x': p['x'] + movements_list[m]['x'],
+                            'y': p['y'] + movements_list[m]['y']
                         })
 
                 # path 坐标
@@ -318,12 +433,13 @@ class Nester:
                         min_x is None or shift_vector['x'] <= min_x):
                     min_area = area
                     min_length = rect_bounds['length']
-                    position = shift_vector
+                    movement = shift_vector
                     min_x = shift_vector['x']
 
-            if position:
+            if movement:
                 placed_segment_list.append(segment)
-                placements.append(position)
+                movements_list.append(movement)
+                # placements.append(position)
 
         if min_length:
             fitness = self.total_segments_area / (min_length * BIN_WIDTH)
@@ -331,7 +447,10 @@ class Nester:
 
         print("min_length = ", min_length)
 
-        return {'placements': placements, 'fitness': fitness, 'paths': paths,'min_length': min_length}
+        return {'placements': movements_list, 'fitness': fitness, 'paths': paths,
+                'min_length': min_length, 'solution': self.solution}
+
+        # return {'placements': placements, 'fitness': fitness, 'paths': paths,'min_length': min_length}
 
 
 def polygon_offset(polygon, offset, CURVETOLERANCE):
@@ -413,4 +532,25 @@ def minkowski_difference(A, B):
                    } for i in range(0, len(clipper_nfp))]
     return clipper_nfp
 
+
+def minkow(A, B):
+    Ac = [[p['x'], p['y']] for p in A]
+    Bc = [[p['x'] * -1, p['y'] * -1] for p in B]
+
+    solution = pyclipper.MinkowskiSum(Ac, Bc, True)
+    largest_area = None
+    clipper_nfp = None
+
+    for p in solution:
+        p = [{'x': i[0], 'y': i[1]} for i in p]
+        sarea = nfp_utls.polygon_area(p)
+        if largest_area is None or largest_area > sarea:
+            clipper_nfp = p
+            largest_area = sarea
+
+    clipper_nfp = [{
+        'x': clipper_nfp[i]['x'] + Bc[0][0] * -1,
+        'y': clipper_nfp[i]['y'] + Bc[0][1] * -1
+    } for i in range(0, len(clipper_nfp))]
+    return clipper_nfp
 

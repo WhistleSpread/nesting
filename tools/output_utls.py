@@ -37,7 +37,7 @@ def output_csv(filepath, filename, to_csv_list):
     with open(filepath + filename + ".csv", "w", encoding='utf-8-sig', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["下料批次号", "零件号", "面料号", "零件外轮廓线坐标"])
-        for item in to_csv_list:
+        for item in to_csv_list[:-2]:
             a = list()
             for point in item[1]:
                 t = list(point)
@@ -67,11 +67,17 @@ def output_png(solution, rates, bin_shape, filename):
     for s in solution:
         output_obj.append(patches.Polygon(s, fc='yellow'))  # 绘制零件，用黄色表示
 
+    output_obj.append(patches.Circle((800.0, 0.0), 100.0, fc='red'))
+    output_obj.append(patches.Circle((2000.0, 400.0), 80.0, fc='red'))
+
+    output_obj.append(patches.Circle((1000.0, 1200.0), 50.0, fc='blue'))
+    output_obj.append(patches.Circle((2000.0, 400.0), 80.0, fc='blue'))
+
     for p in output_obj:
         ax.add_patch(p)
 
     plt.rcParams['savefig.dpi'] = 500  # 图片像素
-    plt.rcParams['figure.dpi'] = 500  # 分辨率
+    plt.rcParams['figure.dpi'] = 500   # 分辨率
 
     my_x_ticks = np.arange(0, BIN_LENGTH, 500); plt.xticks(my_x_ticks)
     my_y_ticks = np.arange(0, BIN_WIDTH, 250);  plt.yticks(my_y_ticks)

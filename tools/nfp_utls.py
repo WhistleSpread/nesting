@@ -940,29 +940,6 @@ def rotate_polygon(polygon, angle):
     return rotated
 
 
-    # rotated = {'points': list()}
-    # angle = angle * math.pi / 180
-    #
-    # # 遍历这个多边形中的每一个点p
-    # # 如果是0的话，旋转角度不变，如果是180度，那么就变成了(-x, -y)
-    # # 所以这里在实现的时候，可以简化一个，这也是可以优化的，这里只是算了它的坐标
-    # # 也就是说得到了它的形状，并没有得到它的具体的位置
-    # for p in polygon:
-    #     x = p['x']
-    #     y = p['y']
-    #     rotated['points'].append({
-    #         'x': x * math.cos(angle) - y * math.sin(angle),
-    #         'y': x * math.sin(angle) + y * math.cos(angle)
-    #     })
-    #
-    # bounds = get_polygon_bounds(rotated['points'])
-    # rotated['x'] = bounds['x']
-    # rotated['y'] = bounds['y']
-    # rotated['length'] = bounds['length']
-    # rotated['width'] = bounds['width']
-    # return rotated
-
-
 def get_polygon_bounds(polygon):
     """
 
